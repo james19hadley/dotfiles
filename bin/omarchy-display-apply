@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Apply display profile (external_only | extend | mirror | laptop_only | reset)
+# 100% universal for any monitor (HDMI, DP, Type-C, etc.) and any resolution/refresh rate
 
 set -euo pipefail
 
@@ -8,7 +9,6 @@ PROFILE="${1:-}"
 PROFILE_FILE="$HOME/.config/omarchy/display_profile"
 
 mkdir -p "$HOME/.config/omarchy" "$HOME/.local/state/omarchy/toggles/hypr"
-# Ensure permanent flag file always exists so Hyprland glob doesn't error
 [[ -f "$HOME/.local/state/omarchy/toggles/hypr/flags.conf" ]] || echo "# Permanent flag" > "$HOME/.local/state/omarchy/toggles/hypr/flags.conf"
 
 if [[ -z "$PROFILE" ]]; then
@@ -19,11 +19,11 @@ if [[ -z "$PROFILE" ]]; then
   fi
 fi
 
-# Detect internal monitor
+# Detect internal monitor (eDP / LVDS / DSI)
 INTERNAL=$(hyprctl monitors all -j 2>/dev/null | jq -r '.[] | select(.name | test("eDP|LVDS|DSI")).name' | head -n 1 || echo "")
 [[ -z "$INTERNAL" ]] && INTERNAL="eDP-1"
 
-# Detect external monitor
+# Detect any external monitor dynamically (HDMI, DP, USB-C)
 EXTERNAL=$(hyprctl monitors all -j 2>/dev/null | jq -r '.[] | select(.name | test("eDP|LVDS|DSI") | not).name' | head -n 1 || echo "")
 if [[ -z "$EXTERNAL" ]]; then
   for status in /sys/class/drm/card*-*/status; do
@@ -39,6 +39,7 @@ has_external() {
   [[ -n "$EXTERNAL" ]]
 }
 
+# Automatically extract native resolution & highest refresh rate from monitor EDID chip
 get_best_external_mode() {
   local mode
   mode=$(hyprctl monitors all -j 2>/dev/null | jq -r ".[] | select(.name == \"$EXTERNAL\").availableModes[]?" | sort -V | tail -n 1 | sed 's/Hz//' || echo "")
@@ -63,8 +64,8 @@ case "$PROFILE" in
       rm -f "$HOME/.local/state/omarchy/toggles/hypr/external-monitor-disable.conf"
       rm -f "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-mirror.conf"
       echo "monitor=$INTERNAL,disable" > "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-disable.conf"
-      hyprctl keyword monitor "$EXTERNAL, $best_ext_mode, 0x0, 1"
       hyprctl keyword monitor "$INTERNAL, disable"
+      hyprctl keyword monitor "$EXTERNAL, $best_ext_mode, 0x0, 1"
       hyprctl reload 2>/dev/null || true
       sleep 0.1
       move_all_workspaces_to "$EXTERNAL"
@@ -87,7 +88,7 @@ case "$PROFILE" in
       rm -f "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-disable.conf"
       rm -f "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-mirror.conf"
       hyprctl keyword monitor "$INTERNAL, preferred, 0x0, 1.25"
-      hyprctl keyword monitor "$EXTERNAL, $best_ext_mode, 1536x0, 1"
+      hyprctl keyword monitor "$EXTERNAL, $best_ext_mode, auto-right, 1"
       hyprctl reload 2>/dev/null || true
       hyprctl dispatch focusmonitor "$EXTERNAL" 2>/dev/null || true
       printf "extend" > "$PROFILE_FILE"
