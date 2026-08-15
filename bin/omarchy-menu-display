@@ -32,7 +32,7 @@ has_external() {
 
 DOT_ACTIVE="●"
 DOT_INACTIVE="○"
-SPACER="⠀" # U+2800 Braille pattern blank for centering
+SPACER="⠀" # Non-stripping Unicode Braille Blank
 
 get_dot() {
   local prof="$1"
@@ -61,8 +61,8 @@ build_options() {
 
   local item_extend="${d_extnd} 󰍹 󰍹  Extend Displays"
   local item_mirror="${d_mirr} 󰍺 󰍺  Mirror Displays"
-  local item_reset="    ${SPACER}󰑓${SPACER}  Reset"
-  local item_scale="    ${SPACER}󰍜${SPACER}  Scaling"
+  local item_reset="${SPACER}${SPACER}${SPACER}󰍹 󰑓  Reset to Default Setup"
+  local item_scale="${SPACER}${SPACER}${SPACER}󰍹 󰍜  Display Scaling"
 
   if has_external; then
     printf "%s\n%s\n%s\n%s\n%s\n%s" \
@@ -85,9 +85,9 @@ menu() {
   local opts="$2"
 
   if command -v omarchy-launch-walker >/dev/null 2>&1; then
-    echo -e "$opts" | omarchy-launch-walker --dmenu --width 350 --minheight 1 --maxheight 420 -p "$prompt…" 2>/dev/null || true
+    echo -e "$opts" | omarchy-launch-walker --dmenu --width 370 --minheight 1 --maxheight 420 -p "$prompt…" 2>/dev/null || true
   elif command -v walker >/dev/null 2>&1; then
-    echo -e "$opts" | walker --dmenu --width 350 -p "$prompt…" 2>/dev/null || true
+    echo -e "$opts" | walker --dmenu --width 370 -p "$prompt…" 2>/dev/null || true
   elif command -v rofi >/dev/null 2>&1; then
     echo -e "$opts" | rofi -dmenu -p "$prompt" 2>/dev/null || true
   else
@@ -109,9 +109,7 @@ select_scaling() {
   height=$(echo "$mon_info" | jq -r '.height // 1080')
   rr=$(echo "$mon_info" | jq -r '.refreshRate // 60')
 
-  # Clean format current scale (e.g. 1 -> 1.0)
   local clean_cur="$cur_scale"
-
   local scales=("1.0" "1.25" "1.4" "1.5" "1.6" "1.75" "2.0" "3.0" "4.0")
   local scale_opts=""
   for s in "${scales[@]}"; do
@@ -121,7 +119,7 @@ select_scaling() {
       scale_opts+="${DOT_INACTIVE}  󰍹  ${s}x\n"
     fi
   done
-  scale_opts+="    ${SPACER}󰍹${SPACER}  Custom"
+  scale_opts+="${SPACER}${SPACER}${SPACER}󰍹  Custom"
 
   local choice
   choice=$(menu "Scaling (${cur_scale}x)" "$scale_opts")
