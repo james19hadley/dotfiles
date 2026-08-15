@@ -32,14 +32,13 @@ has_external() {
 
 DOT_ACTIVE="●"
 DOT_INACTIVE="○"
-SPACER="⠀" # Non-stripping Unicode Braille Blank
 
 get_dot() {
   local prof="$1"
   if [[ "$CURRENT_PROFILE" == "$prof" ]]; then
-    echo "$DOT_ACTIVE "
+    echo "$DOT_ACTIVE"
   else
-    echo "$DOT_INACTIVE "
+    echo "$DOT_INACTIVE"
   fi
 }
 
@@ -61,8 +60,8 @@ build_options() {
 
   local item_extend="${d_extnd} 󰍹 󰍹  Extend Displays"
   local item_mirror="${d_mirr} 󰍺 󰍺  Mirror Displays"
-  local item_reset="${SPACER}${SPACER}${SPACER}󰍹 󰑓  Reset to Default Setup"
-  local item_scale="${SPACER}${SPACER}${SPACER}󰍹 󰍜  Display Scaling"
+  local item_reset="󰑓  Reset to Default Setup"
+  local item_scale="󰍜  Scaling"
 
   if has_external; then
     printf "%s\n%s\n%s\n%s\n%s\n%s" \
@@ -85,9 +84,9 @@ menu() {
   local opts="$2"
 
   if command -v omarchy-launch-walker >/dev/null 2>&1; then
-    echo -e "$opts" | omarchy-launch-walker --dmenu --width 370 --minheight 1 --maxheight 420 -p "$prompt…" 2>/dev/null || true
+    echo -e "$opts" | omarchy-launch-walker --dmenu --width 340 --minheight 1 --maxheight 400 -p "$prompt…" 2>/dev/null || true
   elif command -v walker >/dev/null 2>&1; then
-    echo -e "$opts" | walker --dmenu --width 370 -p "$prompt…" 2>/dev/null || true
+    echo -e "$opts" | walker --dmenu --width 340 -p "$prompt…" 2>/dev/null || true
   elif command -v rofi >/dev/null 2>&1; then
     echo -e "$opts" | rofi -dmenu -p "$prompt" 2>/dev/null || true
   else
@@ -114,12 +113,12 @@ select_scaling() {
   local scale_opts=""
   for s in "${scales[@]}"; do
     if [[ "$clean_cur" == "$s" || "$clean_cur" == "$s.0" || "$clean_cur" == "${s}0" ]]; then
-      scale_opts+="${DOT_ACTIVE}  󰍹  ${s}x\n"
+      scale_opts+="${DOT_ACTIVE} 󰍹  ${s}x\n"
     else
-      scale_opts+="${DOT_INACTIVE}  󰍹  ${s}x\n"
+      scale_opts+="${DOT_INACTIVE} 󰍹  ${s}x\n"
     fi
   done
-  scale_opts+="${SPACER}${SPACER}${SPACER}󰍹  Custom"
+  scale_opts+="󰍹  Custom"
 
   local choice
   choice=$(menu "Scaling (${cur_scale}x)" "$scale_opts")
@@ -180,7 +179,7 @@ case "$selected" in
   *"Built-in Screen"*|*"Primary Display"*)
     omarchy-display-apply laptop_only
     ;;
-  *"Reset"*)
+  *"Reset to Default Setup"|*"Reset"*)
     omarchy-display-apply reset
     ;;
   *"Scaling"*)
