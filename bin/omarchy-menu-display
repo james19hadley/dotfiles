@@ -30,17 +30,17 @@ has_external() {
   return 1
 }
 
-# Rich, intuitive Nerd Font icons & clear labels
+# Intuitive, minimalist icon design
 if is_laptop; then
-  ITEM_PRIMARY="󰛧  Built-in Screen Only"
-  ITEM_EXTERNAL="󰍺  External Screen Only"
+  ITEM_EXTERNAL="󰍹 󰜺  External Screen Only"
+  ITEM_PRIMARY="󰌢 󰜺  Built-in Screen Only"
 else
-  ITEM_PRIMARY="󰍹  Primary Display Only"
-  ITEM_EXTERNAL="󰍺  Secondary Display Only"
+  ITEM_EXTERNAL="󰜺 󰍹  Secondary Display Only"
+  ITEM_PRIMARY="󰍹 󰜺  Primary Display Only"
 fi
 
 ITEM_EXTEND="󰍹 󰍹  Extend Displays"
-ITEM_MIRROR="󰍹  󰍹  Mirror Displays"
+ITEM_MIRROR="󰍹 = 󰍹  Mirror Displays"
 ITEM_RESET="󰑓  Reset"
 ITEM_SCALING="󰍜  Scaling"
 
@@ -77,9 +77,13 @@ menu() {
   local preselect="${3:-}"
   local extra_args=()
 
-  # Walker -c takes the exact string value of the item to pre-select
+  # Walker -c expects 1-based integer line number
   if [[ -n "$preselect" ]]; then
-    extra_args+=("-c" "$preselect")
+    local index
+    index=$(echo -e "$opts" | grep -nxF "$preselect" | cut -d: -f1 || echo "")
+    if [[ -n "$index" && "$index" =~ ^[0-9]+$ ]]; then
+      extra_args+=("-c" "$index")
+    fi
   fi
 
   if command -v omarchy-launch-walker >/dev/null 2>&1; then
