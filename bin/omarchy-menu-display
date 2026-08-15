@@ -30,11 +30,12 @@ has_external() {
   return 1
 }
 
-# Icon configurations exactly as requested:
+# Icon configurations:
 # - External only: Monitor + Crossed-out Laptop (󰍹 󰛧)
 # - Extend: Two Monitors (󰍹 󰍹)
 # - Mirror: Dual screens (󰍺 󰍺)
 # - Built-in only: Cross first, then Laptop (󰅖 󰌢)
+# - Reset / Scaling: Centered with 1 space offset so icon sits in the middle of dual icons above
 if is_laptop; then
   ITEM_EXTERNAL="󰍹 󰛧  External Screen Only"
   ITEM_PRIMARY="󰅖 󰌢  Built-in Screen Only"
@@ -45,8 +46,8 @@ fi
 
 ITEM_EXTEND="󰍹 󰍹  Extend Displays"
 ITEM_MIRROR="󰍺 󰍺  Mirror Displays"
-ITEM_RESET="󰑓    Reset"
-ITEM_SCALING="󰍜    Scaling"
+ITEM_RESET=" 󰑓   Reset"
+ITEM_SCALING=" 󰍜   Scaling"
 
 build_options() {
   if has_external; then
