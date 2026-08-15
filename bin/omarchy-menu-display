@@ -30,13 +30,13 @@ has_external() {
   return 1
 }
 
-# Icon configurations
+# Icon design with crisp cross 󰅖
 if is_laptop; then
-  ITEM_EXTERNAL="󰍹 󰛧  External Screen Only"
-  ITEM_PRIMARY="󰌢 󰜺  Built-in Screen Only"
+  ITEM_EXTERNAL="󰍹 󰅖  External Screen Only"
+  ITEM_PRIMARY="󰌢 󰅖  Built-in Screen Only"
 else
-  ITEM_EXTERNAL="󰍹 󰜺  Secondary Display Only"
-  ITEM_PRIMARY="󰍹 󰜺  Primary Display Only"
+  ITEM_EXTERNAL="󰍹 󰅖  Secondary Display Only"
+  ITEM_PRIMARY="󰍹 󰅖  Primary Display Only"
 fi
 
 ITEM_EXTEND="󰍹 󰍹  Extend Displays"
@@ -61,35 +61,14 @@ build_options() {
   fi
 }
 
-get_preselect_item() {
-  case "$CURRENT_PROFILE" in
-    external_only) echo "$ITEM_EXTERNAL" ;;
-    extend) echo "$ITEM_EXTEND" ;;
-    mirror) echo "$ITEM_MIRROR" ;;
-    laptop_only) echo "$ITEM_PRIMARY" ;;
-    *) echo "$ITEM_EXTERNAL" ;;
-  esac
-}
-
 menu() {
   local prompt="$1"
   local opts="$2"
-  local preselect="${3:-}"
-  local extra_args=()
-
-  # Walker -c expects 1-based integer line number
-  if [[ -n "$preselect" ]]; then
-    local index
-    index=$(echo -e "$opts" | grep -nxF "$preselect" | cut -d: -f1 || echo "")
-    if [[ -n "$index" && "$index" =~ ^[0-9]+$ ]]; then
-      extra_args+=("-c" "$index")
-    fi
-  fi
 
   if command -v omarchy-launch-walker >/dev/null 2>&1; then
-    echo -e "$opts" | omarchy-launch-walker --dmenu --width 340 --minheight 1 --maxheight 400 -p "$prompt…" "${extra_args[@]}" 2>/dev/null || true
+    echo -e "$opts" | omarchy-launch-walker --dmenu --width 340 --minheight 1 --maxheight 400 -p "$prompt…" 2>/dev/null || true
   elif command -v walker >/dev/null 2>&1; then
-    echo -e "$opts" | walker --dmenu --width 340 -p "$prompt…" "${extra_args[@]}" 2>/dev/null || true
+    echo -e "$opts" | walker --dmenu --width 340 -p "$prompt…" 2>/dev/null || true
   elif command -v rofi >/dev/null 2>&1; then
     echo -e "$opts" | rofi -dmenu -p "$prompt" 2>/dev/null || true
   else
@@ -113,9 +92,8 @@ select_scaling() {
 
   local scale_opts="󰍹  1.0x\n󰍹  1.25x\n󰍹  1.4x\n󰍹  1.5x\n󰍹  1.6x\n󰍹  1.75x\n󰍹  2.0x\n󰍹  3.0x\n󰍹  4.0x\n󰍹  Custom"
 
-  local current_match="󰍹  ${cur_scale}x"
   local choice
-  choice=$(menu "Scaling (${cur_scale}x)" "$scale_opts" "$current_match")
+  choice=$(menu "Scaling (${cur_scale}x)" "$scale_opts")
   [[ -z "$choice" ]] && return 0
 
   local new_scale=""
@@ -156,13 +134,12 @@ select_scaling() {
 }
 
 options=$(build_options)
-preselect=$(get_preselect_item)
-selected=$(menu "Display Setup" "$options" "$preselect")
+selected=$(menu "Display Setup" "$options")
 
 [[ -z "$selected" ]] && exit 0
 
 case "$selected" in
-  *"External Screen"|*"Secondary Display"*)
+  *"External Screen"*|*"Secondary Display"*)
     omarchy-display-apply external_only
     ;;
   *"Extend Displays"*)
@@ -171,7 +148,7 @@ case "$selected" in
   *"Mirror Displays"*)
     omarchy-display-apply mirror
     ;;
-  *"Built-in Screen"|*"Primary Display"*)
+  *"Built-in Screen"*|*"Primary Display"*)
     omarchy-display-apply laptop_only
     ;;
   *"Reset"*)
