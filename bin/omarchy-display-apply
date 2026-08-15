@@ -98,11 +98,15 @@ case "$PROFILE" in
 
   mirror)
     if has_external; then
+      best_ext_mode=$(get_best_external_mode)
       rm -f "$HOME/.local/state/omarchy/toggles/hypr/external-monitor-disable.conf"
       rm -f "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-disable.conf"
-      echo "monitor=$EXTERNAL, preferred, auto, 1, mirror, $INTERNAL" > "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-mirror.conf"
+      # Make high-res external monitor the clean base display and mirror to laptop screen
+      printf "monitor=%s, %s, 0x0, 1\nmonitor=%s, preferred, auto, 1, mirror, %s\n" \
+        "$EXTERNAL" "$best_ext_mode" "$INTERNAL" "$EXTERNAL" > "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-mirror.conf"
       hyprctl reload 2>/dev/null || true
-      hyprctl dispatch focusmonitor "$INTERNAL" 2>/dev/null || true
+      hyprctl dispatch focusmonitor "$EXTERNAL" 2>/dev/null || true
+      move_all_workspaces_to "$EXTERNAL"
       printf "mirror" > "$PROFILE_FILE"
       notify-send -u low "󰍺  Display" "Mirror Displays active ($EXTERNAL = $INTERNAL)"
     fi
