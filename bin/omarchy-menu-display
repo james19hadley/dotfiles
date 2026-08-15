@@ -26,45 +26,59 @@ has_external() {
   return 1
 }
 
-# Build options with last chosen profile at the TOP
-build_options() {
-  local ext_item="󰍺  External Display Only"
-  local extend_item="󰍹  Extend Displays"
-  local mirror_item="󰍺  Mirror Displays"
-  local laptop_item="󰍹  Laptop Display Only"
-  local reset_item="󰑓  Reset"
-  local scale_item="󰍹  Scaling"
+# Fixed, stable list of menu items
+ITEM_EXTERNAL="󰍺  External Display Only"
+ITEM_EXTEND="󰍹  Extend Displays"
+ITEM_MIRROR="󰍺  Mirror Displays"
+ITEM_PRIMARY="󰛧  Built-in Display Only"
+ITEM_RESET="󰑓  Reset"
+ITEM_SCALING="󰍹  Scaling"
 
+build_options() {
   if has_external; then
-    case "$CURRENT_PROFILE" in
-      external_only)
-        printf "%s\n%s\n%s\n%s\n%s\n%s" "$ext_item" "$extend_item" "$mirror_item" "$laptop_item" "$reset_item" "$scale_item"
-        ;;
-      extend)
-        printf "%s\n%s\n%s\n%s\n%s\n%s" "$extend_item" "$ext_item" "$mirror_item" "$laptop_item" "$reset_item" "$scale_item"
-        ;;
-      mirror)
-        printf "%s\n%s\n%s\n%s\n%s\n%s" "$mirror_item" "$ext_item" "$extend_item" "$laptop_item" "$reset_item" "$scale_item"
-        ;;
-      laptop_only)
-        printf "%s\n%s\n%s\n%s\n%s\n%s" "$laptop_item" "$ext_item" "$extend_item" "$mirror_item" "$reset_item" "$scale_item"
-        ;;
-      *)
-        printf "%s\n%s\n%s\n%s\n%s\n%s" "$ext_item" "$extend_item" "$mirror_item" "$laptop_item" "$reset_item" "$scale_item"
-        ;;
-    esac
+    printf "%s\n%s\n%s\n%s\n%s\n%s" \
+      "$ITEM_EXTERNAL" \
+      "$ITEM_EXTEND" \
+      "$ITEM_MIRROR" \
+      "$ITEM_PRIMARY" \
+      "$ITEM_RESET" \
+      "$ITEM_SCALING"
   else
-    printf "%s\n%s\n%s" "󰍹  Laptop Display" "$reset_item" "$scale_item"
+    printf "%s\n%s\n%s" \
+      "$ITEM_PRIMARY" \
+      "$ITEM_RESET" \
+      "$ITEM_SCALING"
   fi
+}
+
+get_preselect_item() {
+  case "$CURRENT_PROFILE" in
+    external_only) echo "$ITEM_EXTERNAL" ;;
+    extend) echo "$ITEM_EXTEND" ;;
+    mirror) echo "$ITEM_MIRROR" ;;
+    laptop_only) echo "$ITEM_PRIMARY" ;;
+    *) echo "$ITEM_EXTERNAL" ;;
+  esac
 }
 
 menu() {
   local prompt="$1"
   local opts="$2"
+  local preselect="${3:-}"
+  local extra_args=()
+
+  if [[ -n "$preselect" ]]; then
+    local index
+    index=$(echo -e "$opts" | grep -nxF "$preselect" | cut -d: -f1 || echo "")
+    if [[ -n "$index" ]]; then
+      extra_args+=("-c" "$index")
+    fi
+  fi
+
   if command -v omarchy-launch-walker >/dev/null 2>&1; then
-    echo -e "$opts" | omarchy-launch-walker --dmenu --width 320 --minheight 1 --maxheight 400 -p "$prompt…" 2>/dev/null || true
+    echo -e "$opts" | omarchy-launch-walker --dmenu --width 320 --minheight 1 --maxheight 400 -p "$prompt…" "${extra_args[@]}" 2>/dev/null || true
   elif command -v walker >/dev/null 2>&1; then
-    echo -e "$opts" | walker --dmenu --width 320 -p "$prompt…" 2>/dev/null || true
+    echo -e "$opts" | walker --dmenu --width 320 -p "$prompt…" "${extra_args[@]}" 2>/dev/null || true
   elif command -v rofi >/dev/null 2>&1; then
     echo -e "$opts" | rofi -dmenu -p "$prompt" 2>/dev/null || true
   else
@@ -88,8 +102,9 @@ select_scaling() {
 
   local scale_opts="󰍹  1.0x\n󰍹  1.25x\n󰍹  1.4x\n󰍹  1.5x\n󰍹  1.6x\n󰍹  1.75x\n󰍹  2.0x\n󰍹  3.0x\n󰍹  4.0x\n󰍹  Custom"
 
+  local current_match="󰍹  ${cur_scale}x"
   local choice
-  choice=$(menu "Scaling (${cur_scale}x)" "$scale_opts")
+  choice=$(menu "Scaling (${cur_scale}x)" "$scale_opts" "$current_match")
   [[ -z "$choice" ]] && return 0
 
   local new_scale=""
@@ -126,11 +141,12 @@ select_scaling() {
 
   hyprctl keyword monitor "$active_mon,${width}x${height}@${rr},auto,$new_scale"
   omarchy-restart-waybar 2>/dev/null || true
-  notify-send -u low "󰍹  Display" "Scaling set to ${new_scale}x"
+  notify-send -u low "󰍹  Display" "Scaling set to ${new_scale}x on $active_mon"
 }
 
 options=$(build_options)
-selected=$(menu "Display Setup" "$options")
+preselect=$(get_preselect_item)
+selected=$(menu "Display Setup" "$options" "$preselect")
 
 [[ -z "$selected" ]] && exit 0
 
@@ -144,7 +160,7 @@ case "$selected" in
   *"Mirror Displays"*)
     omarchy-display-apply mirror
     ;;
-  *"Laptop Display"*)
+  *"Built-in Display Only"|*"Laptop Display"*)
     omarchy-display-apply laptop_only
     ;;
   *"Reset"*)
