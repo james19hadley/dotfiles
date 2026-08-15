@@ -30,13 +30,17 @@ has_external() {
   return 1
 }
 
-# Icon design with crisp cross 󰅖
+# Icon configurations exactly as requested:
+# - External only: Monitor + Crossed-out Laptop (󰍹 󰛧)
+# - Extend: Two Monitors (󰍹 󰍹)
+# - Mirror: Dual screens (󰍺 󰍺)
+# - Built-in only: Cross first, then Laptop (󰅖 󰌢)
 if is_laptop; then
-  ITEM_EXTERNAL="󰍹 󰅖  External Screen Only"
-  ITEM_PRIMARY="󰌢 󰅖  Built-in Screen Only"
+  ITEM_EXTERNAL="󰍹 󰛧  External Screen Only"
+  ITEM_PRIMARY="󰅖 󰌢  Built-in Screen Only"
 else
   ITEM_EXTERNAL="󰍹 󰅖  Secondary Display Only"
-  ITEM_PRIMARY="󰍹 󰅖  Primary Display Only"
+  ITEM_PRIMARY="󰅖 󰍹  Primary Display Only"
 fi
 
 ITEM_EXTEND="󰍹 󰍹  Extend Displays"
