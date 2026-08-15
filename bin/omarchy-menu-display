@@ -10,6 +10,24 @@ PROFILE_FILE="$HOME/.config/omarchy/display_profile"
 CURRENT_PROFILE="external_only"
 [[ -f "$PROFILE_FILE" ]] && CURRENT_PROFILE=$(<"$PROFILE_FILE")
 
+# Ensure focus is on a working, powered-on monitor before opening menu
+ensure_active_monitor_focus() {
+  local active_mons
+  active_mons=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.disabled == false).name' || echo "")
+  local focused_mon
+  focused_mon=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused == true).name' | head -n 1 || echo "")
+
+  if [[ -z "$focused_mon" ]] || ! echo "$active_mons" | grep -qw "$focused_mon"; then
+    local fallback_mon
+    fallback_mon=$(echo "$active_mons" | head -n 1)
+    if [[ -n "$fallback_mon" ]]; then
+      hyprctl dispatch focusmonitor "$fallback_mon" 2>/dev/null || true
+    fi
+  fi
+}
+
+ensure_active_monitor_focus
+
 # Detect internal vs external monitors
 is_laptop() {
   hyprctl monitors all -j 2>/dev/null | jq -e '.[] | select(.name | test("eDP|LVDS|DSI"))' >/dev/null 2>&1

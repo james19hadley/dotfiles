@@ -8,6 +8,8 @@ PROFILE="${1:-}"
 PROFILE_FILE="$HOME/.config/omarchy/display_profile"
 
 mkdir -p "$HOME/.config/omarchy" "$HOME/.local/state/omarchy/toggles/hypr"
+# Ensure permanent flag file always exists so Hyprland glob doesn't error
+[[ -f "$HOME/.local/state/omarchy/toggles/hypr/flags.conf" ]] || echo "# Permanent flag" > "$HOME/.local/state/omarchy/toggles/hypr/flags.conf"
 
 if [[ -z "$PROFILE" ]]; then
   if [[ -f "$PROFILE_FILE" ]]; then
@@ -121,7 +123,8 @@ case "$PROFILE" in
     ;;
 
   reset)
-    rm -f "$HOME/.local/state/omarchy/toggles/hypr/"*.conf
+    rm -f "$HOME/.local/state/omarchy/toggles/hypr/"*monitor*.conf
+    echo "# Permanent flag" > "$HOME/.local/state/omarchy/toggles/hypr/flags.conf"
     hyprctl reload
     printf "external_only" > "$PROFILE_FILE"
     notify-send -u low "󰑓  Display" "Reset display settings to default"
