@@ -6,10 +6,6 @@ set -euo pipefail
 
 export PATH="$HOME/.local/bin:$HOME/.local/share/omarchy/bin:$PATH"
 
-PROFILE_FILE="$HOME/.config/omarchy/display_profile"
-CURRENT_PROFILE="external_only"
-[[ -f "$PROFILE_FILE" ]] && CURRENT_PROFILE=$(<"$PROFILE_FILE")
-
 # Ensure focus is on a working, powered-on monitor before opening menu
 ensure_active_monitor_focus() {
   local active_mons
@@ -27,6 +23,32 @@ ensure_active_monitor_focus() {
 }
 
 ensure_active_monitor_focus
+
+# Detect live active monitor profile in real-time from Hyprland compositor
+detect_live_profile() {
+  local json
+  json=$(hyprctl monitors all -j 2>/dev/null)
+  local is_mirrored
+  is_mirrored=$(echo "$json" | jq '[.[] | select(.mirrorOf != "none" and .mirrorOf != "" and .disabled == false)] | length')
+  local internal_active
+  internal_active=$(echo "$json" | jq '[.[] | select((.name | test("eDP|LVDS|DSI")) and .disabled == false)] | length')
+  local external_active
+  external_active=$(echo "$json" | jq '[.[] | select((.name | test("eDP|LVDS|DSI") | not) and .disabled == false)] | length')
+
+  if (( is_mirrored > 0 )); then
+    echo "mirror"
+  elif (( internal_active > 0 && external_active > 0 )); then
+    echo "extend"
+  elif (( internal_active == 0 && external_active > 0 )); then
+    echo "external_only"
+  elif (( internal_active > 0 && external_active == 0 )); then
+    echo "laptop_only"
+  else
+    echo "external_only"
+  fi
+}
+
+CURRENT_PROFILE=$(detect_live_profile)
 
 # Detect internal vs external monitors
 is_laptop() {
