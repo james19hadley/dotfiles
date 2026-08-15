@@ -35,7 +35,9 @@ has_external() {
 # - Extend: Two Monitors (󰍹 󰍹)
 # - Mirror: Dual screens (󰍺 󰍺)
 # - Built-in only: Cross first, then Laptop (󰅖 󰌢)
-# - Reset / Scaling: Centered with 1 space offset so icon sits in the middle of dual icons above
+# - Reset / Scaling: Centered using fixed-width braille spacers that Walker preserves
+SPACER="⠀" # U+2800 Braille pattern blank
+
 if is_laptop; then
   ITEM_EXTERNAL="󰍹 󰛧  External Screen Only"
   ITEM_PRIMARY="󰅖 󰌢  Built-in Screen Only"
@@ -46,8 +48,8 @@ fi
 
 ITEM_EXTEND="󰍹 󰍹  Extend Displays"
 ITEM_MIRROR="󰍺 󰍺  Mirror Displays"
-ITEM_RESET=" 󰑓   Reset"
-ITEM_SCALING=" 󰍜   Scaling"
+ITEM_RESET="${SPACER}󰑓${SPACER}  Reset"
+ITEM_SCALING="${SPACER}󰍜${SPACER}  Scaling"
 
 build_options() {
   if has_external; then
