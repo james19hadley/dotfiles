@@ -30,19 +30,17 @@ has_external() {
   return 1
 }
 
-# Symmetrical, clear icon design:
-# 󰍹 = Monitor On | 󰠹 = Monitor Off
-# 󰌢 = Laptop On  | 󰛧 = Laptop Off
+# Icon configurations
 if is_laptop; then
   ITEM_EXTERNAL="󰍹 󰛧  External Screen Only"
-  ITEM_PRIMARY="󰌢 󰠹  Built-in Screen Only"
+  ITEM_PRIMARY="󰌢 󰜺  Built-in Screen Only"
 else
-  ITEM_EXTERNAL="󰍹 󰠹  Secondary Display Only"
-  ITEM_PRIMARY="󰍹 󰠹  Primary Display Only"
+  ITEM_EXTERNAL="󰍹 󰜺  Secondary Display Only"
+  ITEM_PRIMARY="󰍹 󰜺  Primary Display Only"
 fi
 
 ITEM_EXTEND="󰍹 󰍹  Extend Displays"
-ITEM_MIRROR="󰍹 = 󰍹 Mirror Displays"
+ITEM_MIRROR="󰍺 󰍺  Mirror Displays"
 ITEM_RESET="󰑓    Reset"
 ITEM_SCALING="󰍜    Scaling"
 
