@@ -1,10 +1,40 @@
 #!/bin/bash
 
 # Omarchy Interactive Display / Monitor Switcher (Win+P)
+# Supports Windows-style Super+P cycling and flexible mirror base architectures
 
 set -euo pipefail
 
 export PATH="$HOME/.local/bin:$HOME/.local/share/omarchy/bin:$PATH"
+
+CYCLE_STATE_FILE="/tmp/omarchy_display_cycle_idx"
+MENU_LOCK_NAME="omarchy-menu-display-lock"
+
+# Handle Windows-style Super+P cycling if menu is already active
+handle_cycling_if_open() {
+  local num_modes=4
+  if pgrep -f "walker.*Display Setup" >/dev/null 2>&1; then
+    local cur_idx=0
+    [[ -f "$CYCLE_STATE_FILE" ]] && cur_idx=$(<"$CYCLE_STATE_FILE")
+
+    local next_idx=$(( (cur_idx + 1) % num_modes ))
+    if (( next_idx == 0 )); then
+      # Loop back to top item
+      wtype -k Up -k Up -k Up 2>/dev/null || true
+    else
+      # Move down to next display mode
+      wtype -k Down 2>/dev/null || true
+    fi
+    echo "$next_idx" > "$CYCLE_STATE_FILE"
+    exit 0
+  fi
+}
+
+handle_cycling_if_open
+
+# Reset cycle index on fresh menu launch
+echo "0" > "$CYCLE_STATE_FILE"
+trap 'rm -f "$CYCLE_STATE_FILE"' EXIT
 
 # Ensure focus is on a working, powered-on monitor before opening menu
 ensure_active_monitor_focus() {
@@ -28,6 +58,7 @@ ensure_active_monitor_focus
 detect_live_profile() {
   local json
   json=$(hyprctl monitors all -j 2>/dev/null)
+  
   local is_mirrored
   is_mirrored=$(echo "$json" | jq '[.[] | select(.mirrorOf != "none" and .mirrorOf != "" and .disabled == false)] | length')
   local internal_active
@@ -134,15 +165,51 @@ menu() {
   fi
 }
 
+select_mirror_mode() {
+  local mirror_opts="󰍹  Mirror (External Display Base — 1440p) \n󰌢  Mirror (Laptop Screen Base — 1080p) "
+  local choice
+  choice=$(menu "Mirror Mode Base" "$mirror_opts")
+  [[ -z "$choice" ]] && return 0
+
+  case "$choice" in
+    *"Laptop Screen"*)
+      omarchy-display-apply mirror_laptop
+      ;;
+    *)
+      omarchy-display-apply mirror_external
+      ;;
+  esac
+}
+
 select_scaling() {
-  local mon_info
-  mon_info=$(hyprctl monitors -j | jq -c '.[] | select(.focused == true)' 2>/dev/null || true)
-  if [[ -z "$mon_info" ]] || [[ "$mon_info" == "null" ]]; then
-    mon_info=$(hyprctl monitors -j | jq -c '.[0]' 2>/dev/null || true)
+  local active_mons
+  active_mons=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.disabled == false).name' || echo "")
+  local mon_count
+  mon_count=$(echo "$active_mons" | wc -w)
+
+  local target_mon=""
+  if (( mon_count > 1 )); then
+    local target_opts=""
+    for m in $active_mons; do
+      local cur_sc
+      cur_sc=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"$m\").scale // 1")
+      if [[ "$m" =~ eDP|LVDS|DSI ]]; then
+        target_opts+="󰌢  Laptop Screen ($m — ${cur_sc}x) \n"
+      else
+        target_opts+="󰍹  External Display ($m — ${cur_sc}x) \n"
+      fi
+    done
+    local mon_choice
+    mon_choice=$(menu "Select Monitor to Scale" "$target_opts")
+    [[ -z "$mon_choice" ]] && return 0
+    target_mon=$(echo "$mon_choice" | grep -oE "eDP-[0-9]+|HDMI-A-[0-9]+|DP-[0-9]+" || head -n 1 <<< "$active_mons")
+  else
+    target_mon=$(echo "$active_mons" | head -n 1)
   fi
 
-  local active_mon cur_scale width height rr
-  active_mon=$(echo "$mon_info" | jq -r '.name // empty')
+  local mon_info
+  mon_info=$(hyprctl monitors -j | jq -c ".[] | select(.name == \"$target_mon\")" 2>/dev/null || true)
+  local cur_scale width height rr
   cur_scale=$(echo "$mon_info" | jq -r '.scale // 1')
   width=$(echo "$mon_info" | jq -r '.width // 1920')
   height=$(echo "$mon_info" | jq -r '.height // 1080')
@@ -161,7 +228,7 @@ select_scaling() {
   scale_opts+="󰍹  Custom "
 
   local choice
-  choice=$(menu "Scaling (${cur_scale}x)" "$scale_opts")
+  choice=$(menu "Scaling for $target_mon (${cur_scale}x)" "$scale_opts")
   [[ -z "$choice" ]] && return 0
 
   local new_scale=""
@@ -196,9 +263,9 @@ select_scaling() {
     return 0
   fi
 
-  hyprctl keyword monitor "$active_mon,${width}x${height}@${rr},auto,$new_scale"
+  hyprctl keyword monitor "$target_mon,${width}x${height}@${rr},auto,$new_scale"
   omarchy-restart-waybar 2>/dev/null || true
-  notify-send -u low "󰍹  Display" "Scaling set to ${new_scale}x on $active_mon"
+  notify-send -u low "󰍹  Display" "Scaling set to ${new_scale}x on $target_mon"
 }
 
 options=$(build_options)
@@ -214,7 +281,7 @@ case "$selected" in
     omarchy-display-apply extend
     ;;
   *"Mirror Displays"*)
-    omarchy-display-apply mirror
+    select_mirror_mode
     ;;
   *"Built-in Screen"*|*"Primary Display"*)
     omarchy-display-apply laptop_only

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Apply display profile (external_only | extend | mirror | laptop_only | reset)
+# Apply display profile (external_only | extend | mirror_external | mirror_laptop | laptop_only | reset)
 # 100% universal for any monitor (HDMI, DP, Type-C, etc.) and any resolution/refresh rate
 
 set -euo pipefail
@@ -96,19 +96,34 @@ case "$PROFILE" in
     fi
     ;;
 
-  mirror)
+  mirror_external|mirror)
     if has_external; then
       best_ext_mode=$(get_best_external_mode)
       rm -f "$HOME/.local/state/omarchy/toggles/hypr/external-monitor-disable.conf"
       rm -f "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-disable.conf"
-      # Make high-res external monitor the clean base display and mirror to laptop screen
+      # Base: External display (high-res canvas), Laptop mirrors External
       printf "monitor=%s, %s, 0x0, 1\nmonitor=%s, preferred, auto, 1, mirror, %s\n" \
         "$EXTERNAL" "$best_ext_mode" "$INTERNAL" "$EXTERNAL" > "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-mirror.conf"
       hyprctl reload 2>/dev/null || true
       hyprctl dispatch focusmonitor "$EXTERNAL" 2>/dev/null || true
       move_all_workspaces_to "$EXTERNAL"
-      printf "mirror" > "$PROFILE_FILE"
-      notify-send -u low "󰍺  Display" "Mirror Displays active ($EXTERNAL = $INTERNAL)"
+      printf "mirror_external" > "$PROFILE_FILE"
+      notify-send -u low "󰍺  Display" "Mirror Displays active (External Base: $EXTERNAL)"
+    fi
+    ;;
+
+  mirror_laptop)
+    if has_external; then
+      rm -f "$HOME/.local/state/omarchy/toggles/hypr/external-monitor-disable.conf"
+      rm -f "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-disable.conf"
+      # Base: Laptop display (native UI scale), External mirrors Laptop
+      printf "monitor=%s, preferred, 0x0, 1\nmonitor=%s, preferred, auto, 1, mirror, %s\n" \
+        "$INTERNAL" "$EXTERNAL" "$INTERNAL" > "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-mirror.conf"
+      hyprctl reload 2>/dev/null || true
+      hyprctl dispatch focusmonitor "$INTERNAL" 2>/dev/null || true
+      move_all_workspaces_to "$INTERNAL"
+      printf "mirror_laptop" > "$PROFILE_FILE"
+      notify-send -u low "󰍺  Display" "Mirror Displays active (Laptop Base: $INTERNAL)"
     fi
     ;;
 
