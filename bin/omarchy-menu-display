@@ -52,10 +52,10 @@ build_options() {
   local item_ext item_prim
   if is_laptop; then
     item_ext="${d_ext} 󰍹 󰛧  External Screen Only"
-    item_prim="${d_prim} 󰅖 󰌢  Built-in Screen Only"
+    item_prim="${d_prim} 󰌢 󰅖  Built-in Screen Only"
   else
     item_ext="${d_ext} 󰍹 󰅖  Secondary Display Only"
-    item_prim="${d_prim} 󰅖 󰍹  Primary Display Only"
+    item_prim="${d_prim} 󰍹 󰅖  Primary Display Only"
   fi
 
   local item_extend="${d_extnd} 󰍹 󰍹  Extend Displays"
