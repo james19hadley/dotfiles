@@ -4,34 +4,59 @@
 
 set -euo pipefail
 
-# Ensure ~/.local/bin is in PATH
 export PATH="$HOME/.local/bin:$HOME/.local/share/omarchy/bin:$PATH"
 
-# Get monitor names dynamically
-INTERNAL=$(hyprctl monitors all -j 2>/dev/null | jq -r '.[] | select(.name | test("eDP|LVDS|DSI")).name' | head -n 1 || echo "")
-EXTERNAL=$(hyprctl monitors all -j 2>/dev/null | jq -r '.[] | select(.name | test("eDP|LVDS|DSI") | not) | select(.disabled == false or .status != 0).name' | head -n 1 || echo "")
+PROFILE_FILE="$HOME/.config/omarchy/display_profile"
+CURRENT_PROFILE="external_only"
+[[ -f "$PROFILE_FILE" ]] && CURRENT_PROFILE=$(<"$PROFILE_FILE")
 
-# If no active external from monitors, check drm connector status
-if [[ -z "$EXTERNAL" ]]; then
+# Check if external monitor is connected
+has_external() {
+  local ext
+  ext=$(hyprctl monitors all -j 2>/dev/null | jq -r '.[] | select(.name | test("eDP|LVDS|DSI") | not).name' | head -n 1 || echo "")
+  if [[ -n "$ext" ]]; then
+    return 0
+  fi
   for status in /sys/class/drm/card*-*/status; do
     [[ "$status" =~ -eDP-|-LVDS-|-DSI- ]] && continue
     if [[ -f "$status" && "$(<"$status")" == "connected" ]]; then
-      EXTERNAL=$(basename "$(dirname "$status")" | sed -E 's/^card[0-9]+-//')
-      break
+      return 0
     fi
   done
-fi
-
-has_external() {
-  [[ -n "$EXTERNAL" ]]
+  return 1
 }
 
-options=""
-if has_external; then
-  options="󰍺  External Display Only\n󰍹  Extend Displays\n󰍺  Mirror Displays\n󰍹  Laptop Display Only\n󰑓  Reset\n󰍹  Scaling"
-else
-  options="󰍹  Laptop Display\n󰑓  Reset\n󰍹  Scaling"
-fi
+# Build options with last chosen profile at the TOP
+build_options() {
+  local ext_item="󰍺  External Display Only"
+  local extend_item="󰍹  Extend Displays"
+  local mirror_item="󰍺  Mirror Displays"
+  local laptop_item="󰍹  Laptop Display Only"
+  local reset_item="󰑓  Reset"
+  local scale_item="󰍹  Scaling"
+
+  if has_external; then
+    case "$CURRENT_PROFILE" in
+      external_only)
+        printf "%s\n%s\n%s\n%s\n%s\n%s" "$ext_item" "$extend_item" "$mirror_item" "$laptop_item" "$reset_item" "$scale_item"
+        ;;
+      extend)
+        printf "%s\n%s\n%s\n%s\n%s\n%s" "$extend_item" "$ext_item" "$mirror_item" "$laptop_item" "$reset_item" "$scale_item"
+        ;;
+      mirror)
+        printf "%s\n%s\n%s\n%s\n%s\n%s" "$mirror_item" "$ext_item" "$extend_item" "$laptop_item" "$reset_item" "$scale_item"
+        ;;
+      laptop_only)
+        printf "%s\n%s\n%s\n%s\n%s\n%s" "$laptop_item" "$ext_item" "$extend_item" "$mirror_item" "$reset_item" "$scale_item"
+        ;;
+      *)
+        printf "%s\n%s\n%s\n%s\n%s\n%s" "$ext_item" "$extend_item" "$mirror_item" "$laptop_item" "$reset_item" "$scale_item"
+        ;;
+    esac
+  else
+    printf "%s\n%s\n%s" "󰍹  Laptop Display" "$reset_item" "$scale_item"
+  fi
+}
 
 menu() {
   local prompt="$1"
@@ -88,7 +113,6 @@ select_scaling() {
       [[ -n "$custom_input" ]] && new_scale="$custom_input"
       ;;
     *)
-      # Support directly typing a number (e.g. 1.35) into search
       clean_input=$(echo "$choice" | tr -cd '0-9.')
       if [[ -n "$clean_input" ]]; then
         new_scale="$clean_input"
@@ -96,7 +120,6 @@ select_scaling() {
       ;;
   esac
 
-  # Validate number
   if [[ -z "$new_scale" ]] || [[ ! "$new_scale" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
     return 0
   fi
@@ -106,67 +129,28 @@ select_scaling() {
   notify-send -u low "󰍹  Display" "Scaling set to ${new_scale}x"
 }
 
+options=$(build_options)
 selected=$(menu "Display Setup" "$options")
 
 [[ -z "$selected" ]] && exit 0
 
 case "$selected" in
   *"External Display Only"*)
-    if ! has_external; then
-      notify-send -u low "󰍹  Display" "No external monitor connected"
-      exit 1
-    fi
-    hyprctl keyword monitor "$EXTERNAL, highrr, auto, 1"
-    omarchy-hyprland-monitor-internal-mirror off 2>/dev/null || true
-    omarchy-hyprland-monitor-internal off
-    notify-send -u low "󰍺  Display" "Switched to External Display Only ($EXTERNAL)"
+    omarchy-display-apply external_only
     ;;
-
   *"Extend Displays"*)
-    if ! has_external; then
-      notify-send -u low "󰍹  Display" "No external monitor connected"
-      exit 1
-    fi
-    omarchy-hyprland-monitor-internal on 2>/dev/null || true
-    omarchy-hyprland-monitor-internal-mirror off 2>/dev/null || true
-    hyprctl keyword monitor "$INTERNAL, preferred, 0x0, 1.25"
-    hyprctl keyword monitor "$EXTERNAL, highrr, auto, 1"
-    notify-send -u low "󰍹  Display" "Extended display mode enabled"
+    omarchy-display-apply extend
     ;;
-
   *"Mirror Displays"*)
-    if ! has_external; then
-      notify-send -u low "󰍹  Display" "No external monitor connected"
-      exit 1
-    fi
-    omarchy-hyprland-monitor-internal on 2>/dev/null || true
-    omarchy-hyprland-monitor-internal-mirror on
-    notify-send -u low "󰍺  Display" "Mirrored display to $EXTERNAL"
+    omarchy-display-apply mirror
     ;;
-
-  *"Laptop Display Only"*)
-    omarchy-hyprland-monitor-internal on 2>/dev/null || true
-    omarchy-hyprland-monitor-internal-mirror off 2>/dev/null || true
-    if has_external; then
-      hyprctl keyword monitor "$EXTERNAL, disable"
-      notify-send -u low "󰍹  Display" "Disabled external display ($EXTERNAL)"
-    else
-      hyprctl keyword monitor "$INTERNAL, preferred, 0x0, 1.25"
-      notify-send -u low "󰍹  Display" "Laptop display active"
-    fi
+  *"Laptop Display"*)
+    omarchy-display-apply laptop_only
     ;;
-
   *"Reset"*)
-    rm -f "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-disable.conf"
-    rm -f "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-mirror.conf"
-    hyprctl reload
-    notify-send -u low "󰑓  Display" "Reset all monitors to default"
+    omarchy-display-apply reset
     ;;
-
   *"Scaling"*)
     select_scaling
     ;;
 esac
-
-# Ensure Waybar redraws cleanly on new display geometry
-omarchy-restart-waybar 2>/dev/null || true
