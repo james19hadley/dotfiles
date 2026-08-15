@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Apply display profile (external_only | extend | mirror | laptop_only)
+# Apply display profile (external_only | extend | mirror | laptop_only | reset)
 
 set -euo pipefail
 
@@ -47,22 +47,20 @@ case "$PROFILE" in
   external_only)
     if has_external; then
       best_ext_mode=$(get_best_external_mode)
-      # 1. Configure external at 0x0
-      hyprctl keyword monitor "$EXTERNAL, $best_ext_mode, 0x0, 1"
-      # 2. Disable internal laptop screen
-      hyprctl keyword monitor "$INTERNAL, disable"
-      echo "monitor=$INTERNAL,disable" > "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-disable.conf"
       rm -f "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-mirror.conf"
-      # 3. Focus external and move workspaces
+      echo "monitor=$INTERNAL,disable" > "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-disable.conf"
+      hyprctl keyword monitor "$EXTERNAL, $best_ext_mode, 0x0, 1"
+      hyprctl keyword monitor "$INTERNAL, disable"
+      hyprctl reload 2>/dev/null || true
       hyprctl dispatch focusmonitor "$EXTERNAL" 2>/dev/null || true
       hyprctl dispatch workspace 1 2>/dev/null || true
       printf "external_only" > "$PROFILE_FILE"
-      notify-send -u low "󰍺  Display" "External Display Only ($EXTERNAL)"
+      notify-send -u low "󰍹  Display" "External Screen Only active ($EXTERNAL)"
     else
-      # If no external, fallback to internal
       rm -f "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-disable.conf"
       rm -f "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-mirror.conf"
       hyprctl keyword monitor "$INTERNAL, preferred, 0x0, 1.25"
+      hyprctl reload 2>/dev/null || true
       hyprctl dispatch focusmonitor "$INTERNAL" 2>/dev/null || true
     fi
     ;;
@@ -74,6 +72,7 @@ case "$PROFILE" in
       rm -f "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-mirror.conf"
       hyprctl keyword monitor "$INTERNAL, preferred, 0x0, 1.25"
       hyprctl keyword monitor "$EXTERNAL, $best_ext_mode, 1536x0, 1"
+      hyprctl reload 2>/dev/null || true
       hyprctl dispatch focusmonitor "$EXTERNAL" 2>/dev/null || true
       printf "extend" > "$PROFILE_FILE"
       notify-send -u low "󰍹  Display" "Extended display mode active"
@@ -84,10 +83,10 @@ case "$PROFILE" in
     if has_external; then
       rm -f "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-disable.conf"
       echo "monitor=$EXTERNAL, preferred, auto, 1, mirror, $INTERNAL" > "$HOME/.local/state/omarchy/toggles/hypr/internal-monitor-mirror.conf"
-      hyprctl keyword monitor "$INTERNAL, preferred, 0x0, 1.25"
-      hyprctl keyword monitor "$EXTERNAL, preferred, auto, 1, mirror, $INTERNAL"
+      hyprctl reload 2>/dev/null || true
+      hyprctl dispatch focusmonitor "$INTERNAL" 2>/dev/null || true
       printf "mirror" > "$PROFILE_FILE"
-      notify-send -u low "󰍺  Display" "Mirrored display to $EXTERNAL"
+      notify-send -u low "󰍺  Display" "Mirror Displays active ($EXTERNAL = $INTERNAL)"
     fi
     ;;
 
@@ -98,9 +97,10 @@ case "$PROFILE" in
     if has_external; then
       hyprctl keyword monitor "$EXTERNAL, disable"
     fi
+    hyprctl reload 2>/dev/null || true
     hyprctl dispatch focusmonitor "$INTERNAL" 2>/dev/null || true
     printf "laptop_only" > "$PROFILE_FILE"
-    notify-send -u low "󰍹  Display" "Laptop display only"
+    notify-send -u low "󰌢  Display" "Built-in screen only"
     ;;
 
   reset)
