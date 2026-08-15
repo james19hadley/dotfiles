@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Omarchy Interactive Display / Monitor Switcher (Win+P)
-# Supports Windows-style Super+P cycling and flexible mirror base architectures
+# Fast 1-click switching with Windows-style Super+P cycling & persistent settings
 
 set -euo pipefail
 
 export PATH="$HOME/.local/bin:$HOME/.local/share/omarchy/bin:$PATH"
 
 CYCLE_STATE_FILE="/tmp/omarchy_display_cycle_idx"
-MENU_LOCK_NAME="omarchy-menu-display-lock"
+MIRROR_BASE_FILE="$HOME/.config/omarchy/mirror_base"
 
 # Handle Windows-style Super+P cycling if menu is already active
 handle_cycling_if_open() {
@@ -19,10 +19,8 @@ handle_cycling_if_open() {
 
     local next_idx=$(( (cur_idx + 1) % num_modes ))
     if (( next_idx == 0 )); then
-      # Loop back to top item
       wtype -k Up -k Up -k Up 2>/dev/null || true
     else
-      # Move down to next display mode
       wtype -k Down 2>/dev/null || true
     fi
     echo "$next_idx" > "$CYCLE_STATE_FILE"
@@ -32,11 +30,9 @@ handle_cycling_if_open() {
 
 handle_cycling_if_open
 
-# Reset cycle index on fresh menu launch
 echo "0" > "$CYCLE_STATE_FILE"
 trap 'rm -f "$CYCLE_STATE_FILE"' EXIT
 
-# Ensure focus is on a working, powered-on monitor before opening menu
 ensure_active_monitor_focus() {
   local active_mons
   active_mons=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.disabled == false).name' || echo "")
@@ -54,7 +50,6 @@ ensure_active_monitor_focus() {
 
 ensure_active_monitor_focus
 
-# Detect live active monitor profile in real-time from Hyprland compositor
 detect_live_profile() {
   local json
   json=$(hyprctl monitors all -j 2>/dev/null)
@@ -81,7 +76,6 @@ detect_live_profile() {
 
 CURRENT_PROFILE=$(detect_live_profile)
 
-# Detect internal vs external monitors
 is_laptop() {
   hyprctl monitors all -j 2>/dev/null | jq -e '.[] | select(.name | test("eDP|LVDS|DSI"))' >/dev/null 2>&1
 }
@@ -165,23 +159,10 @@ menu() {
   fi
 }
 
-select_mirror_mode() {
-  local mirror_opts="󰍹  Mirror (External Display Base — 1440p) \n󰌢  Mirror (Laptop Screen Base — 1080p) "
-  local choice
-  choice=$(menu "Mirror Mode Base" "$mirror_opts")
-  [[ -z "$choice" ]] && return 0
-
-  case "$choice" in
-    *"Laptop Screen"*)
-      omarchy-display-apply mirror_laptop
-      ;;
-    *)
-      omarchy-display-apply mirror_external
-      ;;
-  esac
-}
-
 select_scaling() {
+  local cur_mirror="laptop"
+  [[ -f "$MIRROR_BASE_FILE" ]] && cur_mirror=$(<"$MIRROR_BASE_FILE")
+
   local active_mons
   active_mons=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.disabled == false).name' || echo "")
   local mon_count
@@ -199,9 +180,26 @@ select_scaling() {
         target_opts+="󰍹  External Display ($m — ${cur_sc}x) \n"
       fi
     done
+    target_opts+="󰍺  Mirror Base: [$cur_mirror] (Click to change) "
+    
     local mon_choice
-    mon_choice=$(menu "Select Monitor to Scale" "$target_opts")
+    mon_choice=$(menu "Scaling & Preferences" "$target_opts")
     [[ -z "$mon_choice" ]] && return 0
+
+    if [[ "$mon_choice" == *"Mirror Base"* ]]; then
+      local m_choice
+      m_choice=$(menu "Default Mirror Base" "󰌢  Laptop Screen (1080p native UI) \n󰍹  External Display (1440p high-res) ")
+      [[ -z "$m_choice" ]] && return 0
+      if [[ "$m_choice" == *"External"* ]]; then
+        echo "external" > "$MIRROR_BASE_FILE"
+        notify-send -u low "󰍺  Mirror Setting" "Default Mirror Base set to External Display (1440p)"
+      else
+        echo "laptop" > "$MIRROR_BASE_FILE"
+        notify-send -u low "󰍺  Mirror Setting" "Default Mirror Base set to Laptop Screen (1080p)"
+      fi
+      return 0
+    fi
+
     target_mon=$(echo "$mon_choice" | grep -oE "eDP-[0-9]+|HDMI-A-[0-9]+|DP-[0-9]+" || head -n 1 <<< "$active_mons")
   else
     target_mon=$(echo "$active_mons" | head -n 1)
@@ -281,7 +279,7 @@ case "$selected" in
     omarchy-display-apply extend
     ;;
   *"Mirror Displays"*)
-    select_mirror_mode
+    omarchy-display-apply mirror
     ;;
   *"Built-in Screen"*|*"Primary Display"*)
     omarchy-display-apply laptop_only
