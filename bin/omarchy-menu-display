@@ -10,7 +10,11 @@ PROFILE_FILE="$HOME/.config/omarchy/display_profile"
 CURRENT_PROFILE="external_only"
 [[ -f "$PROFILE_FILE" ]] && CURRENT_PROFILE=$(<"$PROFILE_FILE")
 
-# Check if external monitor is connected
+# Detect internal vs external monitors
+is_laptop() {
+  hyprctl monitors all -j 2>/dev/null | jq -e '.[] | select(.name | test("eDP|LVDS|DSI"))' >/dev/null 2>&1
+}
+
 has_external() {
   local ext
   ext=$(hyprctl monitors all -j 2>/dev/null | jq -r '.[] | select(.name | test("eDP|LVDS|DSI") | not).name' | head -n 1 || echo "")
@@ -26,13 +30,19 @@ has_external() {
   return 1
 }
 
-# Fixed, stable list of menu items
-ITEM_EXTERNAL="󰍺  External Display Only"
-ITEM_EXTEND="󰍹  Extend Displays"
-ITEM_MIRROR="󰍺  Mirror Displays"
-ITEM_PRIMARY="󰛧  Built-in Display Only"
+# Rich, intuitive Nerd Font icons & clear labels
+if is_laptop; then
+  ITEM_PRIMARY="󰛧  Built-in Screen Only"
+  ITEM_EXTERNAL="󰍺  External Screen Only"
+else
+  ITEM_PRIMARY="󰍹  Primary Display Only"
+  ITEM_EXTERNAL="󰍺  Secondary Display Only"
+fi
+
+ITEM_EXTEND="󰍹 󰍹  Extend Displays"
+ITEM_MIRROR="󰍹  󰍹  Mirror Displays"
 ITEM_RESET="󰑓  Reset"
-ITEM_SCALING="󰍹  Scaling"
+ITEM_SCALING="󰍜  Scaling"
 
 build_options() {
   if has_external; then
@@ -67,18 +77,15 @@ menu() {
   local preselect="${3:-}"
   local extra_args=()
 
+  # Walker -c takes the exact string value of the item to pre-select
   if [[ -n "$preselect" ]]; then
-    local index
-    index=$(echo -e "$opts" | grep -nxF "$preselect" | cut -d: -f1 || echo "")
-    if [[ -n "$index" ]]; then
-      extra_args+=("-c" "$index")
-    fi
+    extra_args+=("-c" "$preselect")
   fi
 
   if command -v omarchy-launch-walker >/dev/null 2>&1; then
-    echo -e "$opts" | omarchy-launch-walker --dmenu --width 320 --minheight 1 --maxheight 400 -p "$prompt…" "${extra_args[@]}" 2>/dev/null || true
+    echo -e "$opts" | omarchy-launch-walker --dmenu --width 340 --minheight 1 --maxheight 400 -p "$prompt…" "${extra_args[@]}" 2>/dev/null || true
   elif command -v walker >/dev/null 2>&1; then
-    echo -e "$opts" | walker --dmenu --width 320 -p "$prompt…" "${extra_args[@]}" 2>/dev/null || true
+    echo -e "$opts" | walker --dmenu --width 340 -p "$prompt…" "${extra_args[@]}" 2>/dev/null || true
   elif command -v rofi >/dev/null 2>&1; then
     echo -e "$opts" | rofi -dmenu -p "$prompt" 2>/dev/null || true
   else
@@ -151,7 +158,7 @@ selected=$(menu "Display Setup" "$options" "$preselect")
 [[ -z "$selected" ]] && exit 0
 
 case "$selected" in
-  *"External Display Only"*)
+  *"External Screen"|*"Secondary Display"*)
     omarchy-display-apply external_only
     ;;
   *"Extend Displays"*)
@@ -160,7 +167,7 @@ case "$selected" in
   *"Mirror Displays"*)
     omarchy-display-apply mirror
     ;;
-  *"Built-in Display Only"|*"Laptop Display"*)
+  *"Built-in Screen"|*"Primary Display"*)
     omarchy-display-apply laptop_only
     ;;
   *"Reset"*)
