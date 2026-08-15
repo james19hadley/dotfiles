@@ -30,41 +30,53 @@ has_external() {
   return 1
 }
 
-# Icon configurations:
-# - External only: Monitor + Crossed-out Laptop (󰍹 󰛧)
-# - Extend: Two Monitors (󰍹 󰍹)
-# - Mirror: Dual screens (󰍺 󰍺)
-# - Built-in only: Cross first, then Laptop (󰅖 󰌢)
-# - Reset / Scaling: Centered using fixed-width braille spacers that Walker preserves
-SPACER="⠀" # U+2800 Braille pattern blank
+DOT_ACTIVE="●"
+DOT_INACTIVE="○"
+SPACER="⠀" # U+2800 Braille pattern blank for centering
 
-if is_laptop; then
-  ITEM_EXTERNAL="󰍹 󰛧  External Screen Only"
-  ITEM_PRIMARY="󰅖 󰌢  Built-in Screen Only"
-else
-  ITEM_EXTERNAL="󰍹 󰅖  Secondary Display Only"
-  ITEM_PRIMARY="󰅖 󰍹  Primary Display Only"
-fi
-
-ITEM_EXTEND="󰍹 󰍹  Extend Displays"
-ITEM_MIRROR="󰍺 󰍺  Mirror Displays"
-ITEM_RESET="${SPACER}󰑓${SPACER}  Reset"
-ITEM_SCALING="${SPACER}󰍜${SPACER}  Scaling"
+get_dot() {
+  local prof="$1"
+  if [[ "$CURRENT_PROFILE" == "$prof" ]]; then
+    echo "$DOT_ACTIVE "
+  else
+    echo "$DOT_INACTIVE "
+  fi
+}
 
 build_options() {
+  local d_ext d_extnd d_mirr d_prim
+  d_ext=$(get_dot "external_only")
+  d_extnd=$(get_dot "extend")
+  d_mirr=$(get_dot "mirror")
+  d_prim=$(get_dot "laptop_only")
+
+  local item_ext item_prim
+  if is_laptop; then
+    item_ext="${d_ext} 󰍹 󰛧  External Screen Only"
+    item_prim="${d_prim} 󰅖 󰌢  Built-in Screen Only"
+  else
+    item_ext="${d_ext} 󰍹 󰅖  Secondary Display Only"
+    item_prim="${d_prim} 󰅖 󰍹  Primary Display Only"
+  fi
+
+  local item_extend="${d_extnd} 󰍹 󰍹  Extend Displays"
+  local item_mirror="${d_mirr} 󰍺 󰍺  Mirror Displays"
+  local item_reset="    ${SPACER}󰑓${SPACER}  Reset"
+  local item_scale="    ${SPACER}󰍜${SPACER}  Scaling"
+
   if has_external; then
     printf "%s\n%s\n%s\n%s\n%s\n%s" \
-      "$ITEM_EXTERNAL" \
-      "$ITEM_EXTEND" \
-      "$ITEM_MIRROR" \
-      "$ITEM_PRIMARY" \
-      "$ITEM_RESET" \
-      "$ITEM_SCALING"
+      "$item_ext" \
+      "$item_extend" \
+      "$item_mirror" \
+      "$item_prim" \
+      "$item_reset" \
+      "$item_scale"
   else
     printf "%s\n%s\n%s" \
-      "$ITEM_PRIMARY" \
-      "$ITEM_RESET" \
-      "$ITEM_SCALING"
+      "$item_prim" \
+      "$item_reset" \
+      "$item_scale"
   fi
 }
 
@@ -73,9 +85,9 @@ menu() {
   local opts="$2"
 
   if command -v omarchy-launch-walker >/dev/null 2>&1; then
-    echo -e "$opts" | omarchy-launch-walker --dmenu --width 340 --minheight 1 --maxheight 400 -p "$prompt…" 2>/dev/null || true
+    echo -e "$opts" | omarchy-launch-walker --dmenu --width 350 --minheight 1 --maxheight 420 -p "$prompt…" 2>/dev/null || true
   elif command -v walker >/dev/null 2>&1; then
-    echo -e "$opts" | walker --dmenu --width 340 -p "$prompt…" 2>/dev/null || true
+    echo -e "$opts" | walker --dmenu --width 350 -p "$prompt…" 2>/dev/null || true
   elif command -v rofi >/dev/null 2>&1; then
     echo -e "$opts" | rofi -dmenu -p "$prompt" 2>/dev/null || true
   else
@@ -97,7 +109,19 @@ select_scaling() {
   height=$(echo "$mon_info" | jq -r '.height // 1080')
   rr=$(echo "$mon_info" | jq -r '.refreshRate // 60')
 
-  local scale_opts="󰍹  1.0x\n󰍹  1.25x\n󰍹  1.4x\n󰍹  1.5x\n󰍹  1.6x\n󰍹  1.75x\n󰍹  2.0x\n󰍹  3.0x\n󰍹  4.0x\n󰍹  Custom"
+  # Clean format current scale (e.g. 1 -> 1.0)
+  local clean_cur="$cur_scale"
+
+  local scales=("1.0" "1.25" "1.4" "1.5" "1.6" "1.75" "2.0" "3.0" "4.0")
+  local scale_opts=""
+  for s in "${scales[@]}"; do
+    if [[ "$clean_cur" == "$s" || "$clean_cur" == "$s.0" || "$clean_cur" == "${s}0" ]]; then
+      scale_opts+="${DOT_ACTIVE}  󰍹  ${s}x\n"
+    else
+      scale_opts+="${DOT_INACTIVE}  󰍹  ${s}x\n"
+    fi
+  done
+  scale_opts+="    ${SPACER}󰍹${SPACER}  Custom"
 
   local choice
   choice=$(menu "Scaling (${cur_scale}x)" "$scale_opts")
