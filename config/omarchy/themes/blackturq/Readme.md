@@ -1,0 +1,45 @@
+# Black Turq
+
+Black Turq based of the color pattern of my Evo80 Keyboard (Anodized Ink). Theme is for https://omarchy.org/. 
+<img width="400" height="400" alt="evo80-80-tkl" src="https://github.com/user-attachments/assets/2579c033-75c9-4ad9-b4d3-290a6a2150aa" />
+
+
+
+
+# Screenshots
+<img width="2560" height="1440" alt="screenshot-2025-09-18_00-11-34" src="https://github.com/user-attachments/assets/b93639eb-3525-4d5d-96b4-19938126ea3b" />
+- Omarchy Wallpaper made by @Kaii :3 (Discord: kaiidenkat) <br>
+
+# Installation Theme
+
+To install this theme, simply use the omarchy-theme-install command:
+
+```bash
+  https://github.com/HANCORE-linux/omarchy-blackturq-theme.git
+```
+
+## Vesktop-Theme
+
+For Vesktop users, you can install this theme by copying the theme file to your Vesktop themes directory:
+
+```bash
+  cp system24-blackturq.theme.css ~/.config/vesktop/themes/system24-blackturq.theme.css
+```
+
+## Neovim-Theme
+
+- Using https://github.com/bjarneo Pixel Theme which use the colors from terminal syntax <br>
+- Check https://github.com/bjarneo/pixel.nvim <br>
+- Make sure Lazyvim is update to date type :Lazy <br>
+
+## VSCode-Theme
+- Check Theme for Blackturq : https://themes.vscode.one/theme/ibandim/lxKOth1u  its not really 1:1 but still close to it <br>
+- Installation: Open VSCode > Click on Extensions > type: Blueberry dark theme
+
+## Waybar-Theme
+
+For my Waybar-Theme simply check my Link https://github.com/HANCORE-linux/Waybar-Theme-red-accents-.git
+
+### License
+
+MIT

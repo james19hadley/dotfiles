@@ -1,0 +1,6 @@
+#!/bin/bash
+
+hyprshot -m ${1:-region} --raw | wl-copy
+
+notify-send "📸 Screenshot copied to clipboard"
+

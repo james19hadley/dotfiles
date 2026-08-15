@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+set -e
+
+APP_DIR="$HOME/.local/antigravity.app"
+BIN_LINK="$HOME/.local/bin/antigravity"
+DESKTOP_FILE="$HOME/.local/share/applications/antigravity.desktop"
+ICON_DIR="$HOME/.local/share/icons/hicolor/512x512/apps"
+DOWNLOADS_DIR="$HOME/Downloads"
+STATE_FILE="$APP_DIR/.last_installed_hash"
+
+echo "=== Antigravity Installer / Updater ==="
+
+ARCHIVE="$1"
+
+if [ -z "$ARCHIVE" ]; then
+  # Look for the most recently modified Antigravity tar.gz in Downloads
+  ARCHIVE=$(find "$DOWNLOADS_DIR" -maxdepth 1 -type f \( -iname "*antigravity*.tar.gz" -o -iname "*antigravity*.tgz" \) -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2-)
+fi
+
+if [ -z "$ARCHIVE" ] || [ ! -f "$ARCHIVE" ]; then
+  if [ -d "$APP_DIR" ]; then
+    echo "No new archive found in $DOWNLOADS_DIR. Current installation in $APP_DIR is up-to-date."
+    exit 0
+  else
+    echo "Error: No Antigravity archive found in $DOWNLOADS_DIR and no existing installation found."
+    echo "Please download Antigravity.tar.gz into ~/Downloads or run: update-antigravity /path/to/archive.tar.gz"
+    exit 1
+  fi
+fi
+
+# Compute hash of the archive to avoid redundant extraction
+CURRENT_HASH=$(sha256sum "$ARCHIVE" | awk '{print $1}')
+if [ -f "$STATE_FILE" ] && [ -d "$APP_DIR" ]; then
+  PREV_HASH=$(cat "$STATE_FILE" 2>/dev/null || true)
+  if [ "$CURRENT_HASH" = "$PREV_HASH" ] && [ -z "$1" ]; then
+    echo "Archive ($ARCHIVE) has already been installed. Skipping update."
+    exit 0
+  fi
+fi
+
+echo "Found archive: $ARCHIVE"
+TMP_DIR=$(mktemp -d -t antigravity-update-XXXXXX)
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+echo "Extracting archive..."
+tar -xzf "$ARCHIVE" -C "$TMP_DIR"
+
+# Find root of extracted app (contains antigravity binary)
+EXTRACTED_APP=$(find "$TMP_DIR" -maxdepth 3 -type f -name "antigravity" -printf '%h\n' | head -n 1)
+
+if [ -z "$EXTRACTED_APP" ] || [ ! -f "$EXTRACTED_APP/antigravity" ]; then
+  echo "Error: Could not locate 'antigravity' executable in extracted archive."
+  exit 1
+fi
+
+echo "Installing to $APP_DIR..."
+mkdir -p "$APP_DIR"
+# Copy contents safely (except state file)
+find "$APP_DIR" -mindepth 1 -maxdepth 1 ! -name '.last_installed_hash' -exec rm -rf {} +
+cp -r "$EXTRACTED_APP"/* "$APP_DIR/"
+chmod +x "$APP_DIR/antigravity"
+echo "$CURRENT_HASH" > "$STATE_FILE"
+
+echo "Creating symlink in ~/.local/bin..."
+mkdir -p "$HOME/.local/bin"
+ln -sf "$APP_DIR/antigravity" "$BIN_LINK"
+
+echo "Extracting application icon..."
+mkdir -p "$ICON_DIR" "$HOME/.local/share/applications/icons"
+python3 -c "
+import struct, json, os
+
+asar_path = '$APP_DIR/resources/app.asar'
+if os.path.exists(asar_path):
+    try:
+        with open(asar_path, 'rb') as f:
+            f.seek(12)
+            header_size = struct.unpack('<I', f.read(4))[0]
+            json_bytes = f.read(header_size)
+            header = json.loads(json_bytes.decode('utf-8'))
+            base_offset = 16 + header_size
+            
+            icon_info = header.get('files', {}).get('icon.png')
+            if icon_info and 'offset' in icon_info:
+                offset = int(icon_info['offset'])
+                size = int(icon_info['size'])
+                f.seek(base_offset + offset)
+                icon_data = f.read(size)
+                
+                for path in [
+                    '$ICON_DIR/antigravity.png',
+                    '$HOME/.local/share/applications/icons/antigravity.png',
+                    '$APP_DIR/antigravity.png'
+                ]:
+                    with open(os.path.expanduser(path), 'wb') as out:
+                        out.write(icon_data)
+    except Exception as e:
+        print('Icon extraction warning:', e)
+" 2>/dev/null || true
+
+echo "Updating desktop entry..."
+cat <<EOF > "$DESKTOP_FILE"
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Antigravity
+GenericName=AI Coding Assistant & IDE
+Comment=Google Antigravity Agentic IDE
+TryExec=$BIN_LINK
+Exec=$BIN_LINK %U
+Icon=$ICON_DIR/antigravity.png
+Terminal=false
+Categories=Development;IDE;
+Keywords=antigravity;gemini;google;ai;code;editor;ide;
+StartupWMClass=antigravity
+StartupNotify=true
+MimeType=text/plain;inode/directory;x-scheme-handler/antigravity;
+EOF
+
+chmod +x "$DESKTOP_FILE"
+
+# Refresh desktop database and icon cache
+update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
+
+# Notify desktop
+if command -v notify-send >/dev/null 2>&1; then
+  notify-send -a "Antigravity" -i "$ICON_DIR/antigravity.png" "Antigravity Installed" "Antigravity is updated and ready in your launcher." 2>/dev/null || true
+fi
+
+echo "=== Antigravity update complete! ==="

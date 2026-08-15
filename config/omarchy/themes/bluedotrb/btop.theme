@@ -1,0 +1,83 @@
+# ────────────────────────────────────────────────────────────
+# Omarchy Custom Theme for btop
+# Generated with Omarchist
+# ────────────────────────────────────────────────────────────
+
+# Main background, empty for terminal default, need to be empty if you want transparent background
+theme[main_bg]=""
+
+# Main text color
+theme[main_fg]="#25be6a"
+
+# Title color for boxes
+theme[title]="#25be6a"
+
+# Highlight color for keyboard shortcuts
+theme[hi_fg]="#be95ff"
+
+# Background color of selected item in processes box
+theme[selected_bg]="#be95ff"
+
+# Foreground color of selected item in processes box
+theme[selected_fg]="#25be6a"
+
+# Color of inactive/disabled text
+theme[inactive_fg]="#1a1a1a"
+
+# Misc colors for processes box including mini cpu graphs, details memory graph and details status text
+theme[proc_misc]="#25be6a"
+
+# Cpu box outline color
+theme[cpu_box]="#78a9ff"
+
+# Memory/disks box outline color
+theme[mem_box]="#78a9ff"
+
+# Net up/down box outline color
+theme[net_box]="#78a9ff"
+
+# Processes box outline color
+theme[proc_box]="#78a9ff"
+
+# Box divider line and small boxes line color
+theme[div_line]="#78a9ff"
+
+# Temperature graph colors
+theme[temp_start]="#e5e5e5"
+theme[temp_mid]="#be95ff"
+theme[temp_end]="#78a9ff"
+
+# CPU graph colors
+theme[cpu_start]="#25be6a"
+theme[cpu_mid]="#be95ff"
+theme[cpu_end]="#78a9ff"
+
+# Mem/Disk free meter
+theme[free_start]="#e5e5e5"
+theme[free_mid]="#be95ff"
+theme[free_end]="#78a9ff"
+
+# Mem/Disk cached meter
+theme[cached_start]="#e5e5e5"
+theme[cached_mid]="#be95ff"
+theme[cached_end]="#78a9ff"
+
+# Mem/Disk available meter
+theme[available_start]="#e5e5e5"
+theme[available_mid]="#be95ff"
+theme[available_end]="#78a9ff"
+
+# Mem/Disk used meter
+theme[used_start]="#e5e5e5"
+theme[used_mid]="#be95ff"
+theme[used_end]="#78a9ff"
+
+# Download graph colors
+theme[download_start]="#e5e5e5"
+theme[download_mid]="#be95ff"
+theme[download_end]="#78a9ff"
+
+# Upload graph colors
+theme[upload_start]="#e5e5e5"
+theme[upload_mid]="#be95ff"
+theme[upload_end]="#78a9ff"

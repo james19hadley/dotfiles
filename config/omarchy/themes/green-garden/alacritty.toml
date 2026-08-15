@@ -1,0 +1,29 @@
+[window]
+# This section is optional but recommended for a complete look.
+decorations = "full"
+
+[colors]
+# Primary colors
+primary.background = "#1d271f" # Changed from #181e19
+primary.foreground = "#e4d8b4"
+
+# Cursor colors
+cursor.cursor = "#e4d8b4"
+cursor.text = "#1d271f"   # Changed from #181e19
+
+# Selection colors
+selection.background = "#505b51" # Changed from #4a544b
+selection.text = "#f2eadc"
+
+# Normal colors
+normal.black = "#293427"   # Changed from #262d24
+normal.red = "#c45b5b"
+normal.green = "#7e9c58"
+normal.yellow = "#d29c5a"
+normal.blue = "#65a0d9"
+normal.magenta = "#d6885e"
+normal.cyan = "#89d9d0"
+normal.white = "#e4d8b4"
+
+# Bright colors
+bright.black = "#505b51"
