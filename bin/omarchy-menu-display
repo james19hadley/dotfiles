@@ -61,13 +61,13 @@ select_scaling() {
   height=$(echo "$mon_info" | jq -r '.height // 1080')
   rr=$(echo "$mon_info" | jq -r '.refreshRate // 60')
 
-  local scale_opts="󰍹  1.0x\n󰍹  1.25x\n󰍹  1.4x\n󰍹  1.5x\n󰍹  1.6x\n󰍹  1.75x\n󰍹  2.0x\n󰍹  3.0x\n󰍹  4.0x"
+  local scale_opts="󰍹  1.0x\n󰍹  1.25x\n󰍹  1.4x\n󰍹  1.5x\n󰍹  1.6x\n󰍹  1.75x\n󰍹  2.0x\n󰍹  3.0x\n󰍹  4.0x\n󰍹  Custom"
 
   local choice
   choice=$(menu "Scaling (${cur_scale}x)" "$scale_opts")
   [[ -z "$choice" ]] && return 0
 
-  local new_scale
+  local new_scale=""
   case "$choice" in
     *"1.0x"*) new_scale="1.0" ;;
     *"1.25x"*) new_scale="1.25" ;;
@@ -78,8 +78,28 @@ select_scaling() {
     *"2.0x"*) new_scale="2.0" ;;
     *"3.0x"*) new_scale="3.0" ;;
     *"4.0x"*) new_scale="4.0" ;;
-    *) return 0 ;;
+    *"Custom"*)
+      local custom_input
+      if command -v omarchy-menu-input >/dev/null 2>&1; then
+        custom_input=$(omarchy-menu-input "Scale (e.g. 1.35)")
+      else
+        custom_input=$(menu "Scale (e.g. 1.35)" "")
+      fi
+      [[ -n "$custom_input" ]] && new_scale="$custom_input"
+      ;;
+    *)
+      # Support directly typing a number (e.g. 1.35) into search
+      clean_input=$(echo "$choice" | tr -cd '0-9.')
+      if [[ -n "$clean_input" ]]; then
+        new_scale="$clean_input"
+      fi
+      ;;
   esac
+
+  # Validate number
+  if [[ -z "$new_scale" ]] || [[ ! "$new_scale" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+    return 0
+  fi
 
   hyprctl keyword monitor "$active_mon,${width}x${height}@${rr},auto,$new_scale"
   omarchy-restart-waybar 2>/dev/null || true
