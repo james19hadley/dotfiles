@@ -1,0 +1,95 @@
+#!/bin/bash
+
+STATE_FILE="$HOME/.config/hypr/last_warm_temp"
+DEFAULT_WARM=3500
+DAY_TEMP=6500
+
+# Ensure hyprsunset daemon is running
+if ! pgrep -x hyprsunset >/dev/null 2>&1; then
+    setsid hyprsunset &
+    sleep 0.4
+fi
+
+get_current_temp() {
+    local t=$(hyprctl hyprsunset temperature 2>/dev/null | grep -oE '[0-9]+' | head -n 1)
+    echo "${t:-$DAY_TEMP}"
+}
+
+get_saved_warm_temp() {
+    if [ -f "$STATE_FILE" ]; then
+        local t=$(cat "$STATE_FILE" | tr -cd '0-9')
+        if [ -n "$t" ] && [ "$t" -ge 1000 ] && [ "$t" -le 5500 ]; then
+            echo "$t"
+            return
+        fi
+    fi
+    echo "$DEFAULT_WARM"
+}
+
+save_warm_temp() {
+    local t=$1
+    if [ -n "$t" ] && [ "$t" -ge 1000 ] && [ "$t" -le 5500 ]; then
+        echo "$t" > "$STATE_FILE"
+    fi
+}
+
+notify() {
+    local title="$1"
+    local msg="$2"
+    notify-send -u low -t 1500 -h string:x-canonical-private-synchronous:nightlight "$title" "$msg"
+}
+
+restart_waybar() {
+    if [ -f "$HOME/.config/waybar/config.jsonc" ] && grep -q "custom/nightlight" "$HOME/.config/waybar/config.jsonc"; then
+        omarchy-restart-waybar 2>/dev/null || true
+    fi
+}
+
+ACTION="${1:-toggle}"
+
+case "$ACTION" in
+    warmer)
+        curr=$(get_current_temp)
+        new_temp=$((curr - 500))
+        [ "$new_temp" -lt 1000 ] && new_temp=1000
+        hyprctl hyprsunset temperature "$new_temp" >/dev/null 2>&1
+        save_warm_temp "$new_temp"
+        notify "🔥 Warmth Increased" "Temperature: ${new_temp}K (Warmer)"
+        ;;
+    cooler)
+        curr=$(get_current_temp)
+        new_temp=$((curr + 500))
+        [ "$new_temp" -gt 6500 ] && new_temp=6500
+        hyprctl hyprsunset temperature "$new_temp" >/dev/null 2>&1
+        [ "$new_temp" -le 5500 ] && save_warm_temp "$new_temp"
+        notify "❄ Warmth Decreased" "Temperature: ${new_temp}K (Cooler)"
+        ;;
+    warm)
+        target="${2:-$(get_saved_warm_temp)}"
+        hyprctl hyprsunset temperature "$target" >/dev/null 2>&1
+        save_warm_temp "$target"
+        notify "🔥 Night Light ON" "Temperature: ${target}K"
+        restart_waybar
+        ;;
+    reset|day)
+        hyprctl hyprsunset temperature "$DAY_TEMP" >/dev/null 2>&1
+        notify "☀ Daylight (Reset)" "Temperature: ${DAY_TEMP}K"
+        restart_waybar
+        ;;
+    toggle)
+        curr=$(get_current_temp)
+        if [ "$curr" -le 5500 ]; then
+            hyprctl hyprsunset temperature "$DAY_TEMP" >/dev/null 2>&1
+            notify "☀ Daylight (Reset)" "Night light turned OFF (${DAY_TEMP}K)"
+        else
+            warm_target=$(get_saved_warm_temp)
+            hyprctl hyprsunset temperature "$warm_target" >/dev/null 2>&1
+            notify "🔥 Night Light ON" "Restored last temperature: ${warm_target}K"
+        fi
+        restart_waybar
+        ;;
+    *)
+        echo "Usage: $0 {warmer|cooler|warm [K]|reset|toggle}"
+        exit 1
+        ;;
+esac

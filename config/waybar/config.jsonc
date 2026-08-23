@@ -19,6 +19,7 @@
       "custom/notification-silencing-indicator"
     ],
     "modules-right": [
+      "custom/ada",
       "group/tray-expander",
       "hyprland/language",
       "bluetooth",
@@ -58,6 +59,15 @@
       "tooltip-format": "Omarchy update available",
       "signal": 7,
       "interval": 3600
+    },
+    "custom/ada": {
+      "format": "{}",
+      "return-type": "json",
+      "exec": "/home/ging/.local/bin/ada status-json",
+      "interval": 2,
+      "on-click": "/home/ging/.local/bin/ada look",
+      "on-click-right": "omarchy-launch-editor /home/ging/.config/ada/config.yaml",
+      "on-click-middle": "/home/ging/.local/bin/ada stats"
     },
     "cpu": {
       "interval": 5,

@@ -34,10 +34,42 @@
 #battery,
 #pulseaudio,
 #custom-omarchy,
-
+#custom-ada,
 #custom-update {
   min-width: 12px;
   margin: 0 7.5px;
+}
+
+#custom-ada {
+  color: #ffffff;
+  font-weight: bold;
+}
+
+#custom-ada.research {
+  color: #8be9fd;
+  font-weight: bold;
+}
+
+#custom-ada.distracted {
+  color: #ff5555;
+  animation: ada-pulse-distracted 3.0s infinite ease-in-out;
+}
+
+@keyframes ada-pulse-distracted {
+  0% { opacity: 1; color: #ff5555; }
+  50% { opacity: 0.6; color: #fa9549; }
+  100% { opacity: 1; color: #ff5555; }
+}
+
+#custom-ada.speaking {
+  color: #50fa7b;
+  animation: ada-pulse-speaking 1.0s infinite ease-in-out;
+}
+
+@keyframes ada-pulse-speaking {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 
 #tray {
