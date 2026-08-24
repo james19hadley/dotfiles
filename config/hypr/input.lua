@@ -19,14 +19,5 @@ hl.config({
   },
 })
 
--- Touchpad Workspace & Window Gestures (3 & 4 fingers)
+-- 3-finger horizontal swipe for workspace switching
 hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
-hl.gesture({ fingers = 4, direction = "horizontal", action = "workspace" })
-
--- 3-finger vertical gestures
-hl.gesture({ fingers = 3, direction = "up", action = function() hl.dispatch(hl.dsp.fullscreen()) end })
-hl.gesture({ fingers = 3, direction = "down", action = function() hl.dispatch(hl.dsp.togglefloating()) end })
-
--- 4-finger vertical gestures
-hl.gesture({ fingers = 4, direction = "up", action = function() hl.exec_cmd("omarchy-menu toggle") end })
-hl.gesture({ fingers = 4, direction = "down", action = function() hl.exec_cmd("omarchy-shell -q io.github.spencerbull.omapilot toggle") end })
