@@ -3,7 +3,7 @@
 hl.config({
   input = {
     kb_layout = "us,ru",
-    kb_options = "compose:right_alt,caps:backspace",
+    kb_options = "compose:right_alt,grp:win_space_toggle,caps:backspace",
     repeat_rate = 40,
     repeat_delay = 200,
     numlock_by_default = true,
