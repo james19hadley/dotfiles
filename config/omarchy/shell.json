@@ -35,17 +35,6 @@
           "id": "omarchy.tray"
         },
         {
-          "id": "io.github.spencerbull.omapilot",
-          "ttsModel": "kokoro-82m",
-          "ttsVoice": "af_heart",
-          "voiceEnabled": true,
-          "ttsProvider": "kokoro",
-          "provider": "builtin",
-          "desktopContext": "On",
-          "onboardingComplete": true,
-          "webHandoffProvider": "google"
-        },
-        {
           "id": "omarchy.tailscale"
         },
         {
