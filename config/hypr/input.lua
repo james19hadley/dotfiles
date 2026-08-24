@@ -18,15 +18,5 @@ hl.config({
   },
 })
 
--- Clear any stale gestures
-pcall(function() hl.gesture({ fingers = 3, direction = "horizontal", action = "unset" }) end)
-pcall(function() hl.gesture({ fingers = 4, direction = "horizontal", action = "unset" }) end)
-pcall(function() hl.gesture({ fingers = 3, direction = "vertical", action = "unset" }) end)
-pcall(function() hl.gesture({ fingers = 4, direction = "vertical", action = "unset" }) end)
-pcall(function() hl.gesture({ fingers = 3, direction = "up", action = "unset" }) end)
-pcall(function() hl.gesture({ fingers = 3, direction = "down", action = "unset" }) end)
-pcall(function() hl.gesture({ fingers = 4, direction = "up", action = "unset" }) end)
-pcall(function() hl.gesture({ fingers = 4, direction = "down", action = "unset" }) end)
-
--- Set 3-finger horizontal workspace swipe
+-- 3-finger horizontal workspace swipe
 hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
