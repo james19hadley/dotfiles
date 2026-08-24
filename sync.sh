@@ -8,7 +8,7 @@ DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "==> Syncing Hyprland configs..."
 mkdir -p "$DOTFILES_DIR/config/hypr"
-cp -a ~/.config/hypr/*.conf "$DOTFILES_DIR/config/hypr/" 2>/dev/null || true
+cp -a ~/.config/hypr/*.conf ~/.config/hypr/*.lua "$DOTFILES_DIR/config/hypr/" 2>/dev/null || true
 
 echo "==> Syncing Waybar configs..."
 mkdir -p "$DOTFILES_DIR/config/waybar"
