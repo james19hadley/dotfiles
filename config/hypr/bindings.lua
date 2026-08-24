@@ -1,7 +1,5 @@
 hl.unbind("SUPER + SPACE")
 -- Application bindings
-o.bind("SUPER + ALT + RETURN", "Tmux", "uwsm-app -- xdg-terminal-exec --dir=\"$(omarchy-cmd-terminal-cwd)\" tmux new")
-o.bind("SUPER + RETURN", "Terminal", "uwsm-app -- xdg-terminal-exec --dir=\"$(omarchy-cmd-terminal-cwd)\"")
 o.bind("SUPER + F", "File manager", "uwsm-app -- nautilus --new-window")
 o.bind("SUPER + B", "Browser", "omarchy-launch-browser")
 o.bind("SUPER + SHIFT + B", "Browser (private)", "omarchy-launch-browser --private")

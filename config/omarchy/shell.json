@@ -10,16 +10,19 @@
           "format": "dddd HH:mm",
           "formatAlt": "d MMMM 'W'ww yyyy",
           "id": "omarchy.clock",
-          "verticalFormat": "HH\n\u2014\nmm"
-        },
-        {
-          "id": "omarchy.keyboard-layout"
+          "verticalFormat": "HH\n—\nmm"
         },
         {
           "id": "omarchy.weather"
         },
         {
+          "id": "omarchy.keyboard-layout"
+        },
+        {
           "id": "omarchy.system-update"
+        },
+        {
+          "id": "community.pomodoro"
         }
       ],
       "left": [
@@ -33,6 +36,32 @@
       "right": [
         {
           "id": "omarchy.tray"
+        },
+        {
+          "id": "hancore.bongocat",
+          "active": true,
+          "positionLocked": true,
+          "positionX": -1,
+          "positionY": -1,
+          "catWidth": 60,
+          "keypressDuration": 105,
+          "keyboardName": "",
+          "monitorName": "",
+          "workspaceId": 0,
+          "colorMode": "default",
+          "customColor": "#f0abab"
+        },
+        {
+          "id": "alexzeitler.omalibre"
+        },
+        {
+          "id": "jkoestinger.vpn"
+        },
+        {
+          "id": "omaplug"
+        },
+        {
+          "id": "akitaonrails.ai-usagebar"
         },
         {
           "id": "omarchy.tailscale"
@@ -58,12 +87,19 @@
       ]
     },
     "position": "top",
-    "transparent": false
+    "transparent": true
   },
   "idle": {
     "lock": 300,
     "screensaver": 150
   },
-  "plugins": [],
+  "plugins": [
+    {
+      "id": "mirador"
+    },
+    {
+      "id": "io.github.pablo-merino.altswitch"
+    }
+  ],
   "version": 1
 }

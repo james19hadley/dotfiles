@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "mirador",
+  "name": "Mirador",
+  "version": "2.0.0",
+  "author": "sanjyay",
+  "description": "Visual overview of workspaces and their windows",
+  "kinds": [
+    "overlay"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "overlay": "WorkspaceOverview.qml"
+  }
+}
