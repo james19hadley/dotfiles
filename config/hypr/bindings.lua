@@ -1,4 +1,6 @@
+-- Switch keyboard layout with Super + Space
 hl.unbind("SUPER + SPACE")
+o.bind("SUPER + SPACE", "Switch keyboard layout", "hyprctl switchxkblayout current next")
 -- Application bindings
 o.bind("SUPER + F", "File manager", "uwsm-app -- nautilus --new-window")
 o.bind("SUPER + B", "Browser", "omarchy-launch-browser")
