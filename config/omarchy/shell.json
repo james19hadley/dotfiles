@@ -36,8 +36,10 @@
         },
         {
           "id": "io.github.spencerbull.omapilot",
-          "ttsModel": "eleven_multilingual_v2",
-          "ttsVoice": "wyWA56cQNU2KqUW4eCsI"
+          "ttsModel": "kokoro-82m",
+          "ttsVoice": "af_heart",
+          "voiceEnabled": true,
+          "ttsProvider": "kokoro"
         },
         {
           "id": "omarchy.tailscale"
