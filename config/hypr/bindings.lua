@@ -74,3 +74,8 @@ o.bind("CTRL + ALT + I", "Mouse scroll down", "bash -c 'ydotool scroll -- 15 0'"
 
 -- Open Omarchy menu on single Super tap (release)
 o.bind("SUPER + SUPER_L", "Omarchy Menu", "omarchy-menu toggle", { release = true })
+
+-- OmaPilot AI Assistant bindings
+o.bind("SUPER + I", "OmaPilot AI", "omarchy-shell -q io.github.spencerbull.omapilot toggle")
+o.bind("SUPER + SHIFT + I", "OmaPilot Voice", "omarchy-shell -q io.github.spencerbull.omapilot voiceToggle")
+o.bind("SUPER + ALT + A", "ADA Quote", "ada quote")
