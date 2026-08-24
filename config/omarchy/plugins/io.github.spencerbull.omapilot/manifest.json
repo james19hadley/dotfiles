@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.spencerbull.omapilot",
+  "name": "OmaPilot",
+  "version": "0.2.0",
+  "author": "Spencer Bull",
+  "license": "MIT",
+  "description": "Use authenticated AI harnesses from a native Omarchy desktop surface.",
+  "kinds": ["bar-widget", "overlay"],
+  "keepLoaded": true,
+  "activation": "on-demand",
+  "entryPoints": {
+    "barWidget": "BarWidget.qml",
+    "overlay": "Ambient.qml"
+  },
+  "barWidget": {
+    "displayName": "OmaPilot",
+    "description": "Work through an authenticated AI harness without leaving the Omarchy bar.",
+    "category": "AI",
+    "aliases": ["ai", "chat", "pilot", "omapilot", "codex", "openai", "grok", "xai", "opencode", "pi"],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "provider": "builtin",
+      "builtinModel": "",
+      "codexModel": "",
+      "opencodeModel": "",
+      "quickActionsJson": "",
+      "desktopContext": "On",
+      "webHandoffProvider": "duckduckgo",
+      "dangerousAutoApprove": false,
+      "voiceEnabled": false,
+      "ttsProvider": "elevenlabs",
+      "ttsModel": "",
+      "ttsVoice": "",
+      "onboardingComplete": false
+    },
+    "schema": [
+      {
+        "key": "provider",
+        "type": "enum",
+        "label": "Harness",
+        "options": ["builtin", "codex", "opencode"],
+        "defaultValue": "builtin",
+        "description": "Choose one harness explicitly. Built-in uses OmaPilot's native Pi runtime; the others use their logged-in ACP harness without fallback."
+      },
+      {
+        "key": "builtinModel",
+        "type": "string",
+        "label": "Last built-in model",
+        "defaultValue": "",
+        "description": "Empty uses the built-in default; discovered Codex, OpenAI, Grok, and OpenAI-compatible models are selected in OmaPilot."
+      },
+      {
+        "key": "codexModel",
+        "type": "string",
+        "label": "Last Codex model",
+        "defaultValue": "",
+        "description": "Empty uses the Codex default; discovered models are selected in OmaPilot."
+      },
+      {
+        "key": "opencodeModel",
+        "type": "string",
+        "label": "Last OpenCode model",
+        "defaultValue": "",
+        "description": "Empty uses the OpenCode default; discovered models are selected in OmaPilot."
+      },
+      {
+        "key": "desktopContext",
+        "type": "enum",
+        "label": "Desktop context",
+        "options": ["On", "Off"],
+        "defaultValue": "On",
+        "description": "Attach a bounded active-window, open-app, workspace, and playing-media snapshot to each new request."
+      },
+      {
+        "key": "webHandoffProvider",
+        "type": "enum",
+        "label": "Search provider",
+        "options": ["duckduckgo", "google", "chatgpt", "claude", "grok"],
+        "defaultValue": "duckduckgo",
+        "description": "Choose where OmaPilot opens current-information questions. AI sites also receive a paste-ready copy; answers stay in the browser."
+      },
+      {
+        "key": "dangerousAutoApprove",
+        "type": "boolean",
+        "label": "Dangerous auto-approve",
+        "defaultValue": false,
+        "description": "Automatically select each exact tool request's Allow once option instead of prompting."
+      },
+      {
+        "key": "voiceEnabled",
+        "type": "boolean",
+        "label": "Enable voice",
+        "defaultValue": false,
+        "description": "Allow talking to OmaPilot and speaking answers after a TTS provider is ready."
+      },
+      {
+        "key": "ttsProvider",
+        "type": "enum",
+        "label": "TTS provider",
+        "options": ["elevenlabs", "kokoro", "openai"],
+        "defaultValue": "elevenlabs",
+        "description": "ElevenLabs is the guided default. Kokoro is local; ElevenLabs and OpenAI keys are stored in voice-auth.json."
+      },
+      {
+        "key": "ttsModel",
+        "type": "string",
+        "label": "TTS model",
+        "defaultValue": "",
+        "description": "Empty uses the selected provider's default model."
+      },
+      {
+        "key": "ttsVoice",
+        "type": "string",
+        "label": "TTS voice",
+        "defaultValue": "",
+        "description": "Empty uses the selected provider's default voice."
+      }
+    ]
+  }
+}

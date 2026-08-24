@@ -35,6 +35,11 @@
           "id": "omarchy.tray"
         },
         {
+          "id": "io.github.spencerbull.omapilot",
+          "ttsModel": "eleven_multilingual_v2",
+          "ttsVoice": "wyWA56cQNU2KqUW4eCsI"
+        },
+        {
           "id": "omarchy.tailscale"
         },
         {

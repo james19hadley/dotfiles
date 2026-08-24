@@ -1,0 +1,3 @@
+runtime/dist/omapilot-broker -diff -text
+runtime/dist/adapters/codex-acp -diff -text
+runtime/dist/omapilot-broker.THIRD_PARTY_LICENSES.txt -whitespace

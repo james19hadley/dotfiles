@@ -25,6 +25,7 @@ cp -a ~/.local/bin/omarchy-* ~/.local/bin/display-menu "$DOTFILES_DIR/bin/" 2>/d
 # Clean nested git, bak files, and compiled binaries
 find "$DOTFILES_DIR" -name "*.bak.*" -delete 2>/dev/null || true
 find "$DOTFILES_DIR/config/omarchy/themes" -name ".git" -exec rm -rf {} + 2>/dev/null || true
+find "$DOTFILES_DIR/config/omarchy/plugins" -name ".git" -exec rm -rf {} + 2>/dev/null || true
 rm -f "$DOTFILES_DIR/bin/uv" "$DOTFILES_DIR/bin/uvx" "$DOTFILES_DIR/bin/lore"* "$DOTFILES_DIR/bin/antigravity" "$DOTFILES_DIR/bin/zed" 2>/dev/null || true
 
 echo "==> Dotfiles synced successfully!"
