@@ -71,8 +71,6 @@ o.bind("CTRL + ALT + comma", "Mouse right click", "ydotool key 273:1 273:0")
 o.bind("CTRL + ALT + U", "Mouse scroll up", "bash -c 'ydotool scroll -- -15 0'", { repeating = true })
 o.bind("CTRL + ALT + I", "Mouse scroll down", "bash -c 'ydotool scroll -- 15 0'", { repeating = true })
 
--- Open Omarchy menu on single Super tap (release)
-o.bind("SUPER + SUPER_L", "Omarchy Menu", "omarchy-menu toggle", { release = true })
-
 o.bind("SUPER + ALT + A", "ADA Quote", "ada quote")
+
 
