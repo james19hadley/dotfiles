@@ -41,7 +41,14 @@ def expand_path(value: str) -> Path:
 def get_gemini_dir() -> Path:
   if "GEMINI_CLI_HOME" in os.environ:
     return expand_path(os.environ["GEMINI_CLI_HOME"])
+  active_profile = expand_path("~/.gemini/profiles/current")
+  if active_profile.exists():
+    return active_profile
+  default_agy = expand_path("~/.gemini/antigravity")
+  if default_agy.exists():
+    return default_agy
   return expand_path("~/.gemini/antigravity-cli")
+
 
 
 def get_state_file() -> Path:
