@@ -1,0 +1,14 @@
+[Unit]
+Description=FICSIT ADA Assistant Real-Time Daemon
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/home/ging/prog/ada/.venv/bin/ada daemon --cooldown 5
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+PassEnvironment=WAYLAND_DISPLAY DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS
+
+[Install]
+WantedBy=default.target

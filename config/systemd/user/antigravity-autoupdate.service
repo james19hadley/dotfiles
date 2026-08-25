@@ -1,0 +1,6 @@
+[Unit]
+Description=Antigravity Auto-Updater Service
+
+[Service]
+Type=oneshot
+ExecStart=/home/ging/.local/bin/update-antigravity
