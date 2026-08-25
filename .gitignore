@@ -1,0 +1,9 @@
+# Sensitive profiles and credentials
+.gemini
+.gemini/*
+profiles
+*auth.json
+*credentials.json
+*.key
+*.token
+*.secret
