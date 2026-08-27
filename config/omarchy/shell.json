@@ -39,7 +39,7 @@
         },
         {
           "id": "hancore.bongocat",
-          "active": true,
+          "active": false,
           "positionLocked": true,
           "positionX": -1,
           "positionY": -1,

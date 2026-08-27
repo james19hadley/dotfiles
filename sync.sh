@@ -25,11 +25,13 @@ cp -a ~/.config/systemd/user/*.service "$DOTFILES_DIR/config/systemd/user/" 2>/d
 cp -a ~/.local/src/omarchy-gestures/* "$DOTFILES_DIR/src/omarchy-gestures/" 2>/dev/null || true
 
 
-# Clean nested git, bak files, and compiled binaries
+# Clean nested git, bak files, compiled binaries, and separate project files (ADA)
 find "$DOTFILES_DIR" -name "*.bak.*" -delete 2>/dev/null || true
 find "$DOTFILES_DIR/config/omarchy/themes" -name ".git" -exec rm -rf {} + 2>/dev/null || true
 find "$DOTFILES_DIR/config/omarchy/plugins" -name ".git" -exec rm -rf {} + 2>/dev/null || true
 rm -f "$DOTFILES_DIR/bin/uv" "$DOTFILES_DIR/bin/uvx" "$DOTFILES_DIR/bin/lore"* "$DOTFILES_DIR/bin/antigravity" "$DOTFILES_DIR/bin/zed" 2>/dev/null || true
+rm -f "$DOTFILES_DIR/bin/ada"* "$DOTFILES_DIR/config/systemd/user/ada"* 2>/dev/null || true
+
 
 echo "==> Dotfiles synced successfully!"
 echo "Run 'git status' and 'git commit' in $DOTFILES_DIR to save changes."

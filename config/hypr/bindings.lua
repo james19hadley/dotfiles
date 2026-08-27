@@ -1,7 +1,6 @@
 -- Let XKB handle Super + Space for language switching
 hl.unbind("SUPER + SPACE")
 -- Application bindings
-o.bind("SUPER + F", "File manager", "uwsm-app -- nautilus --new-window")
 o.bind("SUPER + B", "Browser", "omarchy-launch-browser")
 o.bind("SUPER + SHIFT + B", "Browser (private)", "omarchy-launch-browser --private")
 o.bind("SUPER + M", "Music", "omarchy-launch-or-focus spotify")
