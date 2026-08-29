@@ -340,7 +340,7 @@ BarWidget {
     anchorItem: button
     bar: root.bar
     open: false
-    contentWidth: popup.fittedContentWidth(Style.space(300))
+    contentWidth: popup.fittedContentWidth(Style.space(320))
     contentHeight: popup.fittedContentHeight(contentColumn.implicitHeight)
 
     ColumnLayout {
@@ -361,6 +361,16 @@ BarWidget {
           font.pixelSize: Style.font.title
           font.bold: true
           Layout.fillWidth: true
+        }
+
+        Button {
+          visible: root.undoState !== null
+          iconText: "󰕌"
+          tooltipText: "Undo last action"
+          horizontalPadding: Style.space(6)
+          verticalPadding: Style.space(2)
+          fontSize: Style.font.caption
+          onClicked: root.undo()
         }
 
         BorderSurface {
@@ -389,7 +399,7 @@ BarWidget {
 
       RowLayout {
         Layout.fillWidth: true
-        spacing: Style.space(8)
+        spacing: Style.space(6)
 
         Text {
           text: root.session.phase === "idle"
@@ -399,14 +409,18 @@ BarWidget {
           font.family: root.fontFamily
           font.pixelSize: Style.space(26)
           font.bold: true
+        }
+
+        Item {
           Layout.fillWidth: true
         }
 
         Button {
           text: root.session.phase === "idle" ? "Start" : (PomodoroModel.isPaused(root.session) ? "Resume" : "Pause")
-          selected: root.session.phase === "work"
+          selected: root.session.phase === "work" && !PomodoroModel.isPaused(root.session)
           fontFamily: root.fontFamily
           fontSize: Style.font.caption
+          horizontalPadding: Style.space(8)
           onClicked: root.startOrToggle()
         }
 
@@ -416,16 +430,8 @@ BarWidget {
           tooltipText: "Skip to next phase"
           fontFamily: root.fontFamily
           fontSize: Style.font.caption
+          horizontalPadding: Style.space(8)
           onClicked: root.skipPhase()
-        }
-
-        Button {
-          visible: root.undoState !== null
-          text: "Undo"
-          tooltipText: "Undo last action"
-          fontFamily: root.fontFamily
-          fontSize: Style.font.caption
-          onClicked: root.undo()
         }
 
         Button {
@@ -434,6 +440,7 @@ BarWidget {
           tooltipText: "Reset session to idle"
           fontFamily: root.fontFamily
           fontSize: Style.font.caption
+          horizontalPadding: Style.space(8)
           onClicked: root.reset()
         }
       }
