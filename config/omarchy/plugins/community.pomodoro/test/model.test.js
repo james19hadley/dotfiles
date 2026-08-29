@@ -7,7 +7,8 @@ const T0 = Date.parse('2026-08-02T10:00:00')
 // ---- config validation ------------------------------------------------------
 
 assert.deepEqual(config, {
-  workMinutes: 20, breakMinutes: 0, longBreakMinutes: 0, cyclesPerLong: 4, autoDnd: true
+  workMinutes: 20, breakMinutes: 0, longBreakMinutes: 0, cyclesPerLong: 4, autoDnd: true,
+  targetMode: 'count', targetCount: 4, targetMinutes: 120
 })
 assert.equal(model.readConfig({ workMinutes: 50 }).workMinutes, 50)
 assert.equal(model.readConfig({ workMinutes: 0 }).workMinutes, 20, 'zero workMinutes is invalid')

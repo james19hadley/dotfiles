@@ -15,7 +15,10 @@ var DEFAULTS = {
   breakMinutes: 0,
   longBreakMinutes: 0,
   cyclesPerLong: 4,
-  autoDnd: true
+  autoDnd: true,
+  targetMode: "count",
+  targetCount: 4,
+  targetMinutes: 120
 }
 
 function idleState() {
@@ -52,12 +55,24 @@ function readConfig(settings, state) {
   var baseLongBreak = s.longBreakMinutes !== undefined ? minutes(s.longBreakMinutes, DEFAULTS.longBreakMinutes, true) : DEFAULTS.longBreakMinutes
   var longBrk = st.longBreakMinutes !== undefined ? minutes(st.longBreakMinutes, baseLongBreak, true) : baseLongBreak
 
+  var targetMode = st.targetMode || s.targetMode || DEFAULTS.targetMode
+  if (targetMode !== "count" && targetMode !== "minutes") targetMode = "count"
+
+  var targetCount = Number(st.targetCount !== undefined ? st.targetCount : (s.targetCount !== undefined ? s.targetCount : DEFAULTS.targetCount))
+  if (!isFinite(targetCount) || targetCount < 1) targetCount = DEFAULTS.targetCount
+
+  var targetMinutes = Number(st.targetMinutes !== undefined ? st.targetMinutes : (s.targetMinutes !== undefined ? s.targetMinutes : DEFAULTS.targetMinutes))
+  if (!isFinite(targetMinutes) || targetMinutes < 1) targetMinutes = DEFAULTS.targetMinutes
+
   return {
     workMinutes: work,
     breakMinutes: brk,
     longBreakMinutes: longBrk,
     cyclesPerLong: isFinite(cycles) && cycles >= 1 && cycles <= 12 ? Math.floor(cycles) : DEFAULTS.cyclesPerLong,
-    autoDnd: st.autoDnd !== undefined ? st.autoDnd === true : (s.autoDnd === false ? false : DEFAULTS.autoDnd)
+    autoDnd: st.autoDnd !== undefined ? st.autoDnd === true : (s.autoDnd === false ? false : DEFAULTS.autoDnd),
+    targetMode: targetMode,
+    targetCount: Math.floor(targetCount),
+    targetMinutes: Math.floor(targetMinutes)
   }
 }
 
@@ -130,6 +145,9 @@ function cloneState(state) {
   if (state.breakMinutes !== undefined) next.breakMinutes = state.breakMinutes
   if (state.longBreakMinutes !== undefined) next.longBreakMinutes = state.longBreakMinutes
   if (state.autoDnd !== undefined) next.autoDnd = state.autoDnd
+  if (state.targetMode !== undefined) next.targetMode = state.targetMode
+  if (state.targetCount !== undefined) next.targetCount = state.targetCount
+  if (state.targetMinutes !== undefined) next.targetMinutes = state.targetMinutes
   return next
 }
 
@@ -279,6 +297,15 @@ function parseState(text) {
   if (parsed.autoDnd !== undefined) {
     state.autoDnd = parsed.autoDnd === true
   }
+  if (parsed.targetMode === "count" || parsed.targetMode === "minutes") {
+    state.targetMode = parsed.targetMode
+  }
+  if (isFinite(Number(parsed.targetCount)) && Number(parsed.targetCount) >= 1) {
+    state.targetCount = Math.floor(Number(parsed.targetCount))
+  }
+  if (isFinite(Number(parsed.targetMinutes)) && Number(parsed.targetMinutes) >= 1) {
+    state.targetMinutes = Math.floor(Number(parsed.targetMinutes))
+  }
   return state
 }
 
@@ -298,6 +325,9 @@ function serializeState(state) {
   if (state.breakMinutes !== undefined) obj.breakMinutes = state.breakMinutes
   if (state.longBreakMinutes !== undefined) obj.longBreakMinutes = state.longBreakMinutes
   if (state.autoDnd !== undefined) obj.autoDnd = state.autoDnd
+  if (state.targetMode !== undefined) obj.targetMode = state.targetMode
+  if (state.targetCount !== undefined) obj.targetCount = state.targetCount
+  if (state.targetMinutes !== undefined) obj.targetMinutes = state.targetMinutes
   return JSON.stringify(obj, null, 2) + "\n"
 }
 

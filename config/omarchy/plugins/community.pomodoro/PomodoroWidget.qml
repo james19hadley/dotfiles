@@ -134,6 +134,36 @@ BarWidget {
     persist(next)
   }
 
+  readonly property real goalProgress: {
+    if (config.targetMode === "minutes") {
+      var goalMins = Math.max(1, config.targetMinutes || 120)
+      return Math.min(1.0, (root.session.todayMinutes || 0) / goalMins)
+    } else {
+      var goalCount = Math.max(1, config.targetCount || 4)
+      return Math.min(1.0, (root.session.todayCount || 0) / goalCount)
+    }
+  }
+
+  readonly property int goalPercent: Math.round(goalProgress * 100)
+
+  function setTargetValue(value) {
+    recordUndo()
+    var next = PomodoroModel.cloneState(session)
+    if (config.targetMode === "minutes") {
+      next.targetMinutes = value
+    } else {
+      next.targetCount = value
+    }
+    persist(next)
+  }
+
+  function toggleTargetMode() {
+    recordUndo()
+    var next = PomodoroModel.cloneState(session)
+    next.targetMode = config.targetMode === "minutes" ? "count" : "minutes"
+    persist(next)
+  }
+
   function toggleBreaks() {
     setBreakDuration(config.breakMinutes === 0 ? 5 : 0)
   }
@@ -453,7 +483,7 @@ BarWidget {
 
       ColumnLayout {
         Layout.fillWidth: true
-        spacing: Style.space(6)
+        spacing: Style.space(8)
 
         RowLayout {
           Layout.fillWidth: true
@@ -472,7 +502,9 @@ BarWidget {
             }
 
             Text {
-              text: "Focused: " + PomodoroModel.formatFocusedTime(root.session.todayMinutes || 0)
+              text: root.config.targetMode === "minutes"
+                ? ("Focused: " + PomodoroModel.formatFocusedTime(root.session.todayMinutes || 0) + " / " + PomodoroModel.formatFocusedTime(root.config.targetMinutes))
+                : ("Focused: " + PomodoroModel.formatFocusedTime(root.session.todayMinutes || 0) + " · " + root.session.todayCount + " / " + root.config.targetCount + " done")
               color: root.dim
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
@@ -484,6 +516,42 @@ BarWidget {
             color: Color.accent
             font.family: root.fontFamily
             font.pixelSize: Style.font.title
+            font.bold: true
+          }
+        }
+
+        RowLayout {
+          Layout.fillWidth: true
+          spacing: Style.space(8)
+
+          Text {
+            text: "Goal"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+
+          Rectangle {
+            Layout.fillWidth: true
+            height: Style.space(6)
+            radius: height / 2
+            color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.12)
+
+            Rectangle {
+              width: Math.min(parent.width, Math.max(0, Math.round(parent.width * root.goalProgress)))
+              height: parent.height
+              radius: parent.radius
+              color: Style.selectedStateColor(root.fg, Color.accent)
+
+              Behavior on width { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+            }
+          }
+
+          Text {
+            text: root.goalPercent + "%"
+            color: root.fg
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
             font.bold: true
           }
         }
@@ -517,6 +585,76 @@ BarWidget {
             fontSize: Style.font.caption
             Layout.fillWidth: true
             onClicked: root.setCount(0)
+          }
+        }
+      }
+
+      Rectangle {
+        Layout.fillWidth: true
+        height: 1
+        color: Color.popups.border
+      }
+
+      ColumnLayout {
+        Layout.fillWidth: true
+        spacing: Style.space(6)
+
+        RowLayout {
+          Layout.fillWidth: true
+          spacing: Style.space(8)
+
+          Text {
+            text: "Daily Goal"
+            color: root.fg
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            Layout.fillWidth: true
+          }
+
+          Button {
+            text: root.config.targetMode === "minutes" ? "Time" : "Pomodoros"
+            tooltipText: "Switch between Pomodoros and Time goal"
+            fontFamily: root.fontFamily
+            fontSize: Style.font.caption
+            horizontalPadding: Style.space(6)
+            verticalPadding: Style.space(2)
+            onClicked: root.toggleTargetMode()
+          }
+        }
+
+        RowLayout {
+          Layout.fillWidth: true
+          spacing: Style.space(4)
+
+          Repeater {
+            model: root.config.targetMode === "minutes"
+              ? [
+                  { label: "1h", value: 60 },
+                  { label: "2h", value: 120 },
+                  { label: "3h", value: 180 },
+                  { label: "4h", value: 240 },
+                  { label: "6h", value: 360 }
+                ]
+              : [
+                  { label: "2", value: 2 },
+                  { label: "4", value: 4 },
+                  { label: "6", value: 6 },
+                  { label: "8", value: 8 },
+                  { label: "10", value: 10 }
+                ]
+            delegate: Button {
+              required property var modelData
+              text: modelData.label
+              selected: root.config.targetMode === "minutes"
+                ? (root.config.targetMinutes === modelData.value)
+                : (root.config.targetCount === modelData.value)
+              fontFamily: root.fontFamily
+              fontSize: Style.font.caption
+              Layout.fillWidth: true
+              horizontalPadding: Style.space(4)
+              onClicked: root.setTargetValue(modelData.value)
+            }
           }
         }
       }
