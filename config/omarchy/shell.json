@@ -22,7 +22,10 @@
           "id": "omarchy.system-update"
         },
         {
-          "id": "community.pomodoro"
+          "breakMinutes": 0,
+          "id": "community.pomodoro",
+          "longBreakMinutes": 0,
+          "workMinutes": 20
         }
       ],
       "left": [

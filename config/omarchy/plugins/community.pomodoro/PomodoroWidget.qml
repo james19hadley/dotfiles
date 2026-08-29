@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import QtQuick.Window
 import Quickshell
 import Quickshell.Io
@@ -13,17 +14,35 @@ import "model/PomodoroModel.js" as PomodoroModel
 // notifications), so nothing fires twice on multi-monitor setups.
 //
 // Left click: start / pause / resume. Right click: skip phase.
-// Middle click: reset. Auto-DND silences notifications during focus.
+// Middle click: open interactive controls and history popup.
 BarWidget {
   id: root
   moduleName: "community.pomodoro"
 
-  readonly property var config: PomodoroModel.readConfig(settings)
+  readonly property var config: PomodoroModel.readConfig(settings, session)
   readonly property string stateFile: PomodoroModel.statePath(
     Quickshell.env("XDG_STATE_HOME"), Quickshell.env("HOME"))
 
   property var session: PomodoroModel.idleState()
   property double nowMs: Date.now()
+
+  readonly property color fg: root.bar ? root.bar.foreground : Color.foreground
+  readonly property color dim: Color.muted
+  readonly property string fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+
+  readonly property var historyEntries: {
+    var h = root.session.history || {}
+    var entries = []
+    var keys = Object.keys(h).sort().reverse()
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i]
+      if (k !== root.session.todayDate && h[k] > 0) {
+        entries.push({ date: k, count: h[k] })
+        if (entries.length >= 5) break
+      }
+    }
+    return entries
+  }
 
   // Side-effect leadership: the instance whose window sits on the first
   // screen. Recomputed reactively if screens change.
@@ -62,6 +81,33 @@ BarWidget {
     stateWriter.setText(PomodoroModel.serializeState(next))
   }
 
+  function adjustCount(delta) {
+    var next = PomodoroModel.adjustTodayCount(session, delta, Date.now())
+    persist(next)
+  }
+
+  function setCount(count) {
+    var next = PomodoroModel.setTodayCount(session, count, Date.now())
+    persist(next)
+  }
+
+  function setWorkDuration(minutes) {
+    var next = PomodoroModel.cloneState(session)
+    next.workMinutes = minutes
+    persist(next)
+  }
+
+  function setBreakDuration(minutes) {
+    var next = PomodoroModel.cloneState(session)
+    next.breakMinutes = minutes
+    next.longBreakMinutes = minutes === 0 ? 0 : Math.max(15, minutes * 3)
+    persist(next)
+  }
+
+  function toggleBreaks() {
+    setBreakDuration(config.breakMinutes === 0 ? 5 : 0)
+  }
+
   // The tick only runs while a session is actively counting down; an idle
   // or paused chip costs nothing.
   Timer {
@@ -86,13 +132,15 @@ BarWidget {
   }
 
   function advancePhase() {
-    var before = session.phase
+    var beforePhase = session.phase
+    var beforeTodayCount = session.todayCount
+    var beforeEndsAtMs = session.endsAtMs
     var resolved = PomodoroModel.resolveState(session, Date.now(), config)
-    if (resolved.phase === before && PomodoroModel.remainingMs(resolved, Date.now()) > 0) return
-    var next = resolved.phase === before
+    if (resolved.phase === beforePhase && resolved.endsAtMs === beforeEndsAtMs && PomodoroModel.remainingMs(resolved, Date.now()) > 0) return
+    var next = (resolved.phase === beforePhase && resolved.endsAtMs === beforeEndsAtMs)
       ? PomodoroModel.completePhase(resolved, Date.now(), config) : resolved
     applyDnd(next)
-    notifyTransition(before, next)
+    notifyTransition(beforeTodayCount !== next.todayCount ? "" : beforePhase, next)
     persist(next)
   }
 
@@ -112,8 +160,10 @@ BarWidget {
 
   function skipPhase() {
     if (session.phase === "idle") return
+    var beforeTodayCount = session.todayCount
     var next = PomodoroModel.completePhase(session, Date.now(), config)
     applyDnd(next)
+    notifyTransition(beforeTodayCount !== next.todayCount ? "" : session.phase, next)
     persist(next)
   }
 
@@ -121,6 +171,11 @@ BarWidget {
     var idle = PomodoroModel.idleState()
     idle.todayCount = session.todayCount
     idle.todayDate = session.todayDate
+    idle.history = session.history || {}
+    idle.workMinutes = session.workMinutes
+    idle.breakMinutes = session.breakMinutes
+    idle.longBreakMinutes = session.longBreakMinutes
+    idle.autoDnd = session.autoDnd
     applyDnd(idle)
     persist(idle)
   }
@@ -182,13 +237,34 @@ BarWidget {
       return "idle"
     }
 
+    function open(): bool {
+      popup.open = true
+      return true
+    }
+
+    function close(): bool {
+      popup.open = false
+      return false
+    }
+
+    function adjustCount(delta: real): int {
+      root.adjustCount(delta)
+      return root.session.todayCount
+    }
+
+    function setCount(count: real): int {
+      root.setCount(count)
+      return root.session.todayCount
+    }
+
     function status(): string {
       return JSON.stringify({
         phase: root.session.phase,
         paused: PomodoroModel.isPaused(root.session),
         remainingMs: Math.round(root.remaining),
         cycleCount: root.session.cycleCount,
-        todayCount: root.session.todayCount
+        todayCount: root.session.todayCount,
+        history: root.session.history || {}
       })
     }
   }
@@ -201,15 +277,295 @@ BarWidget {
     text: root.session.phase === "idle"
       ? PomodoroModel.glyphFor("idle")
       : PomodoroModel.glyphFor(root.session.phase) + " " + PomodoroModel.formatRemaining(root.remaining)
-    tooltipText: root.session.phase === "idle"
-      ? "Pomodoro — click to start a focus session (" + root.session.todayCount + " done today)"
+    tooltipText: (root.session.phase === "idle"
+      ? "Pomodoro (" + root.session.todayCount + " done today)"
       : PomodoroModel.labelFor(root.session.phase)
         + (PomodoroModel.isPaused(root.session) ? " (paused)" : "")
-        + " — " + root.session.todayCount + " done today · right-click skips, middle resets"
+        + " — " + root.session.todayCount + " done today")
+        + " · middle-click opens controls"
     onPressed: function (mouseButton) {
       if (mouseButton === Qt.RightButton) root.skipPhase()
-      else if (mouseButton === Qt.MiddleButton) root.reset()
+      else if (mouseButton === Qt.MiddleButton) popup.open = !popup.open
       else root.startOrToggle()
+    }
+  }
+
+  PopupCard {
+    id: popup
+    anchorItem: button
+    bar: root.bar
+    open: false
+    contentWidth: popup.fittedContentWidth(Style.space(300))
+    contentHeight: popup.fittedContentHeight(contentColumn.implicitHeight)
+
+    ColumnLayout {
+      id: contentColumn
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.top: parent.top
+      spacing: Style.space(10)
+
+      RowLayout {
+        Layout.fillWidth: true
+        spacing: Style.space(8)
+
+        Text {
+          text: "Pomodoro"
+          color: root.fg
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.title
+          font.bold: true
+          Layout.fillWidth: true
+        }
+
+        BorderSurface {
+          leftPadding: Style.space(8)
+          rightPadding: Style.space(8)
+          topPadding: Style.space(2)
+          bottomPadding: Style.space(2)
+          color: root.session.phase === "work" ? Color.accent : Color.popups.background
+          radius: Style.space(4)
+          implicitWidth: statusText.implicitWidth + Style.space(16)
+          implicitHeight: statusText.implicitHeight + Style.space(6)
+
+          Text {
+            id: statusText
+            anchors.centerIn: parent
+            text: root.session.phase === "work"
+              ? (PomodoroModel.isPaused(root.session) ? "Paused" : "Focusing")
+              : (root.session.phase === "idle" ? "Idle" : "Break")
+            color: root.session.phase === "work" ? Color.background : root.fg
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+          }
+        }
+      }
+
+      RowLayout {
+        Layout.fillWidth: true
+        spacing: Style.space(8)
+
+        Text {
+          text: root.session.phase === "idle"
+            ? (root.config.workMinutes + ":00")
+            : PomodoroModel.formatRemaining(root.remaining)
+          color: root.fg
+          font.family: root.fontFamily
+          font.pixelSize: Style.space(26)
+          font.bold: true
+          Layout.fillWidth: true
+        }
+
+        Button {
+          text: root.session.phase === "idle" ? "Start" : (PomodoroModel.isPaused(root.session) ? "Resume" : "Pause")
+          selected: root.session.phase === "work"
+          fontFamily: root.fontFamily
+          fontSize: Style.font.caption
+          onClicked: root.startOrToggle()
+        }
+
+        Button {
+          visible: root.session.phase !== "idle"
+          text: "Skip"
+          fontFamily: root.fontFamily
+          fontSize: Style.font.caption
+          onClicked: root.skipPhase()
+        }
+
+        Button {
+          visible: root.session.phase !== "idle"
+          text: "Reset"
+          fontFamily: root.fontFamily
+          fontSize: Style.font.caption
+          onClicked: root.reset()
+        }
+      }
+
+      Rectangle {
+        Layout.fillWidth: true
+        height: 1
+        color: Color.popups.border
+      }
+
+      ColumnLayout {
+        Layout.fillWidth: true
+        spacing: Style.space(6)
+
+        RowLayout {
+          Layout.fillWidth: true
+          spacing: Style.space(8)
+
+          Text {
+            text: "Completed Today"
+            color: root.fg
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+            font.bold: true
+            Layout.fillWidth: true
+          }
+
+          Text {
+            text: String(root.session.todayCount)
+            color: Color.accent
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.title
+            font.bold: true
+          }
+        }
+
+        RowLayout {
+          Layout.fillWidth: true
+          spacing: Style.space(6)
+
+          Button {
+            text: "-1"
+            tooltipText: "Decrease count"
+            fontFamily: root.fontFamily
+            fontSize: Style.font.caption
+            Layout.fillWidth: true
+            onClicked: root.adjustCount(-1)
+          }
+
+          Button {
+            text: "+1"
+            tooltipText: "Increase count"
+            fontFamily: root.fontFamily
+            fontSize: Style.font.caption
+            Layout.fillWidth: true
+            onClicked: root.adjustCount(1)
+          }
+
+          Button {
+            text: "Set 0"
+            tooltipText: "Reset today to 0"
+            fontFamily: root.fontFamily
+            fontSize: Style.font.caption
+            Layout.fillWidth: true
+            onClicked: root.setCount(0)
+          }
+        }
+      }
+
+      Rectangle {
+        Layout.fillWidth: true
+        height: 1
+        color: Color.popups.border
+      }
+
+      ColumnLayout {
+        Layout.fillWidth: true
+        spacing: Style.space(6)
+
+        Text {
+          text: "Duration"
+          color: root.fg
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          font.bold: true
+        }
+
+        RowLayout {
+          Layout.fillWidth: true
+          spacing: Style.space(4)
+
+          Repeater {
+            model: [15, 20, 25, 30, 45, 50]
+            delegate: Button {
+              required property int modelData
+              text: modelData + "m"
+              selected: root.config.workMinutes === modelData
+              fontFamily: root.fontFamily
+              fontSize: Style.font.caption
+              Layout.fillWidth: true
+              horizontalPadding: Style.space(4)
+              onClicked: root.setWorkDuration(modelData)
+            }
+          }
+        }
+      }
+
+      ColumnLayout {
+        Layout.fillWidth: true
+        spacing: Style.space(6)
+
+        Text {
+          text: "Rest Breaks"
+          color: root.fg
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          font.bold: true
+        }
+
+        RowLayout {
+          Layout.fillWidth: true
+          spacing: Style.space(4)
+
+          Repeater {
+            model: [
+              { label: "Off", minutes: 0 },
+              { label: "3m", minutes: 3 },
+              { label: "5m", minutes: 5 },
+              { label: "10m", minutes: 10 },
+              { label: "15m", minutes: 15 }
+            ]
+            delegate: Button {
+              required property var modelData
+              text: modelData.label
+              selected: root.config.breakMinutes === modelData.minutes
+              fontFamily: root.fontFamily
+              fontSize: Style.font.caption
+              Layout.fillWidth: true
+              horizontalPadding: Style.space(4)
+              onClicked: root.setBreakDuration(modelData.minutes)
+            }
+          }
+        }
+      }
+
+      ColumnLayout {
+        Layout.fillWidth: true
+        spacing: Style.space(4)
+        visible: root.historyEntries.length > 0
+
+        Rectangle {
+          Layout.fillWidth: true
+          height: 1
+          color: Color.popups.border
+        }
+
+        Text {
+          text: "Recent History"
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+        }
+
+        Repeater {
+          model: root.historyEntries
+          delegate: RowLayout {
+            required property var modelData
+            Layout.fillWidth: true
+            spacing: Style.space(8)
+
+            Text {
+              text: modelData.date
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              Layout.fillWidth: true
+            }
+
+            Text {
+              text: modelData.count + " done"
+              color: root.fg
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: true
+            }
+          }
+        }
+      }
     }
   }
 }

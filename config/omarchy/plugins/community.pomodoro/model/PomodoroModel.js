@@ -11,9 +11,9 @@
 var PHASES = ["idle", "work", "break", "longBreak"]
 
 var DEFAULTS = {
-  workMinutes: 25,
-  breakMinutes: 5,
-  longBreakMinutes: 15,
+  workMinutes: 20,
+  breakMinutes: 0,
+  longBreakMinutes: 0,
   cyclesPerLong: 4,
   autoDnd: true
 }
@@ -26,24 +26,37 @@ function idleState() {
     cycleCount: 0,
     todayCount: 0,
     todayDate: "",
-    dndWasOn: false
+    dndWasOn: false,
+    history: {}
   }
 }
 
 // Read widget settings with validation; invalid values fall back.
-function readConfig(settings) {
+function readConfig(settings, state) {
   var s = settings || {}
-  function minutes(value, fallback) {
+  var st = state || {}
+  function minutes(value, fallback, allowZero) {
     var n = Number(value)
-    return isFinite(n) && n >= 1 && n <= 240 ? Math.floor(n) : fallback
+    var min = allowZero ? 0 : 1
+    return isFinite(n) && n >= min && n <= 240 ? Math.floor(n) : fallback
   }
   var cycles = Number(s.cyclesPerLong)
+
+  var baseWork = s.workMinutes !== undefined ? minutes(s.workMinutes, DEFAULTS.workMinutes, false) : DEFAULTS.workMinutes
+  var work = st.workMinutes !== undefined ? minutes(st.workMinutes, baseWork, false) : baseWork
+
+  var baseBreak = s.breakMinutes !== undefined ? minutes(s.breakMinutes, DEFAULTS.breakMinutes, true) : DEFAULTS.breakMinutes
+  var brk = st.breakMinutes !== undefined ? minutes(st.breakMinutes, baseBreak, true) : baseBreak
+
+  var baseLongBreak = s.longBreakMinutes !== undefined ? minutes(s.longBreakMinutes, DEFAULTS.longBreakMinutes, true) : DEFAULTS.longBreakMinutes
+  var longBrk = st.longBreakMinutes !== undefined ? minutes(st.longBreakMinutes, baseLongBreak, true) : baseLongBreak
+
   return {
-    workMinutes: minutes(s.workMinutes, DEFAULTS.workMinutes),
-    breakMinutes: minutes(s.breakMinutes, DEFAULTS.breakMinutes),
-    longBreakMinutes: minutes(s.longBreakMinutes, DEFAULTS.longBreakMinutes),
+    workMinutes: work,
+    breakMinutes: brk,
+    longBreakMinutes: longBrk,
     cyclesPerLong: isFinite(cycles) && cycles >= 1 && cycles <= 12 ? Math.floor(cycles) : DEFAULTS.cyclesPerLong,
-    autoDnd: s.autoDnd === false ? false : DEFAULTS.autoDnd
+    autoDnd: st.autoDnd !== undefined ? st.autoDnd === true : (s.autoDnd === false ? false : DEFAULTS.autoDnd)
   }
 }
 
@@ -57,8 +70,13 @@ function phaseDurationMs(phase, config) {
 // The phase that follows a completed one. Completing work increments the
 // cycle; every cyclesPerLong-th work earns the long break.
 function nextPhase(completedPhase, cycleCountAfter, config) {
-  if (completedPhase === "work")
-    return cycleCountAfter % config.cyclesPerLong === 0 ? "longBreak" : "break"
+  if (completedPhase === "work") {
+    var isLong = cycleCountAfter % config.cyclesPerLong === 0
+    if (isLong && config.longBreakMinutes > 0) return "longBreak"
+    if (!isLong && config.breakMinutes > 0) return "break"
+    if (isLong && config.breakMinutes > 0) return "break"
+    return "work"
+  }
   return "work"
 }
 
@@ -73,21 +91,44 @@ function withToday(state, nowMs) {
   var key = dayKey(nowMs)
   if (state.todayDate === key) return state
   var next = cloneState(state)
+  if (state.todayDate && state.todayCount > 0) {
+    if (!next.history) next.history = {}
+    next.history[state.todayDate] = state.todayCount
+  }
   next.todayDate = key
-  next.todayCount = 0
+  next.todayCount = (next.history && next.history[key]) || 0
   return next
 }
 
 function cloneState(state) {
-  return {
+  var next = {
     phase: state.phase,
     endsAtMs: state.endsAtMs,
     pausedRemainingMs: state.pausedRemainingMs,
     cycleCount: state.cycleCount,
     todayCount: state.todayCount,
     todayDate: state.todayDate,
-    dndWasOn: state.dndWasOn === true
+    dndWasOn: state.dndWasOn === true,
+    history: state.history ? Object.assign({}, state.history) : {}
   }
+  if (state.workMinutes !== undefined) next.workMinutes = state.workMinutes
+  if (state.breakMinutes !== undefined) next.breakMinutes = state.breakMinutes
+  if (state.longBreakMinutes !== undefined) next.longBreakMinutes = state.longBreakMinutes
+  if (state.autoDnd !== undefined) next.autoDnd = state.autoDnd
+  return next
+}
+
+function setTodayCount(state, count, nowMs) {
+  var next = withToday(state, nowMs)
+  next.todayCount = Math.max(0, Math.floor(Number(count) || 0))
+  if (!next.history) next.history = {}
+  next.history[next.todayDate] = next.todayCount
+  return next
+}
+
+function adjustTodayCount(state, delta, nowMs) {
+  var cur = Number(state.todayCount) || 0
+  return setTodayCount(state, cur + delta, nowMs)
 }
 
 // Start a phase now.
@@ -133,6 +174,8 @@ function completePhase(state, nowMs, config) {
   if (next.phase === "work") {
     next.cycleCount = next.cycleCount + 1
     next.todayCount = next.todayCount + 1
+    if (!next.history) next.history = {}
+    next.history[next.todayDate] = next.todayCount
   }
   var following = nextPhase(next.phase, next.cycleCount, config)
   return startPhase(next, following, nowMs, config)
@@ -168,19 +211,40 @@ function parseState(text) {
   }
   if (typeof parsed.todayDate === "string") state.todayDate = parsed.todayDate
   state.dndWasOn = parsed.dndWasOn === true
+  if (parsed.history && typeof parsed.history === "object" && !Array.isArray(parsed.history)) {
+    state.history = parsed.history
+  }
+  if (isFinite(Number(parsed.workMinutes)) && Number(parsed.workMinutes) >= 1) {
+    state.workMinutes = Math.floor(Number(parsed.workMinutes))
+  }
+  if (isFinite(Number(parsed.breakMinutes)) && Number(parsed.breakMinutes) >= 0) {
+    state.breakMinutes = Math.floor(Number(parsed.breakMinutes))
+  }
+  if (isFinite(Number(parsed.longBreakMinutes)) && Number(parsed.longBreakMinutes) >= 0) {
+    state.longBreakMinutes = Math.floor(Number(parsed.longBreakMinutes))
+  }
+  if (parsed.autoDnd !== undefined) {
+    state.autoDnd = parsed.autoDnd === true
+  }
   return state
 }
 
 function serializeState(state) {
-  return JSON.stringify({
+  var obj = {
     phase: state.phase,
     endsAtMs: state.endsAtMs,
     pausedRemainingMs: state.pausedRemainingMs,
     cycleCount: state.cycleCount,
     todayCount: state.todayCount,
     todayDate: state.todayDate,
-    dndWasOn: state.dndWasOn === true
-  }, null, 2) + "\n"
+    dndWasOn: state.dndWasOn === true,
+    history: state.history || {}
+  }
+  if (state.workMinutes !== undefined) obj.workMinutes = state.workMinutes
+  if (state.breakMinutes !== undefined) obj.breakMinutes = state.breakMinutes
+  if (state.longBreakMinutes !== undefined) obj.longBreakMinutes = state.longBreakMinutes
+  if (state.autoDnd !== undefined) obj.autoDnd = state.autoDnd
+  return JSON.stringify(obj, null, 2) + "\n"
 }
 
 function statePath(xdgStateHome, home) {
@@ -231,6 +295,9 @@ if (typeof module !== "undefined") {
     statePath: statePath,
     formatRemaining: formatRemaining,
     glyphFor: glyphFor,
-    labelFor: labelFor
+    labelFor: labelFor,
+    setTodayCount: setTodayCount,
+    adjustTodayCount: adjustTodayCount,
+    cloneState: cloneState
   }
 }
