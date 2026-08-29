@@ -25,6 +25,7 @@ function idleState() {
     pausedRemainingMs: 0,
     cycleCount: 0,
     todayCount: 0,
+    todayMinutes: 0,
     todayDate: "",
     dndWasOn: false,
     history: {}
@@ -91,12 +92,25 @@ function withToday(state, nowMs) {
   var key = dayKey(nowMs)
   if (state.todayDate === key) return state
   var next = cloneState(state)
-  if (state.todayDate && state.todayCount > 0) {
+  if (state.todayDate && (state.todayCount > 0 || (state.todayMinutes && state.todayMinutes > 0))) {
     if (!next.history) next.history = {}
-    next.history[state.todayDate] = state.todayCount
+    next.history[state.todayDate] = {
+      count: state.todayCount,
+      minutes: state.todayMinutes || 0
+    }
   }
   next.todayDate = key
-  next.todayCount = (next.history && next.history[key]) || 0
+  var histEntry = next.history ? next.history[key] : null
+  if (histEntry && typeof histEntry === "object") {
+    next.todayCount = Number(histEntry.count) || 0
+    next.todayMinutes = Number(histEntry.minutes) || 0
+  } else if (typeof histEntry === "number") {
+    next.todayCount = histEntry
+    next.todayMinutes = histEntry * (next.workMinutes || DEFAULTS.workMinutes)
+  } else {
+    next.todayCount = 0
+    next.todayMinutes = 0
+  }
   return next
 }
 
@@ -106,10 +120,11 @@ function cloneState(state) {
     endsAtMs: state.endsAtMs,
     pausedRemainingMs: state.pausedRemainingMs,
     cycleCount: state.cycleCount,
-    todayCount: state.todayCount,
+    todayCount: Number(state.todayCount) || 0,
+    todayMinutes: Number(state.todayMinutes) || 0,
     todayDate: state.todayDate,
     dndWasOn: state.dndWasOn === true,
-    history: state.history ? Object.assign({}, state.history) : {}
+    history: state.history ? JSON.parse(JSON.stringify(state.history)) : {}
   }
   if (state.workMinutes !== undefined) next.workMinutes = state.workMinutes
   if (state.breakMinutes !== undefined) next.breakMinutes = state.breakMinutes
@@ -118,17 +133,32 @@ function cloneState(state) {
   return next
 }
 
-function setTodayCount(state, count, nowMs) {
+function setTodayCount(state, count, minutes, nowMs) {
   var next = withToday(state, nowMs)
-  next.todayCount = Math.max(0, Math.floor(Number(count) || 0))
+  var c = Math.max(0, Math.floor(Number(count) || 0))
+  next.todayCount = c
+  if (minutes !== undefined) {
+    next.todayMinutes = Math.max(0, Math.floor(Number(minutes) || 0))
+  } else if (c === 0) {
+    next.todayMinutes = 0
+  }
   if (!next.history) next.history = {}
-  next.history[next.todayDate] = next.todayCount
+  next.history[next.todayDate] = {
+    count: next.todayCount,
+    minutes: next.todayMinutes
+  }
   return next
 }
 
-function adjustTodayCount(state, delta, nowMs) {
-  var cur = Number(state.todayCount) || 0
-  return setTodayCount(state, cur + delta, nowMs)
+function adjustTodayCount(state, delta, workMinutes, nowMs) {
+  var curCount = Number(state.todayCount) || 0
+  var curMinutes = Number(state.todayMinutes) || 0
+  var stepMinutes = Number(workMinutes) || Number(state.workMinutes) || DEFAULTS.workMinutes
+  var newCount = Math.max(0, curCount + delta)
+  var newMinutes = delta < 0
+    ? (newCount === 0 ? 0 : Math.max(0, curMinutes + delta * stepMinutes))
+    : curMinutes + delta * stepMinutes
+  return setTodayCount(state, newCount, newMinutes, nowMs)
 }
 
 // Start a phase now.
@@ -174,8 +204,12 @@ function completePhase(state, nowMs, config) {
   if (next.phase === "work") {
     next.cycleCount = next.cycleCount + 1
     next.todayCount = next.todayCount + 1
+    next.todayMinutes = (next.todayMinutes || 0) + config.workMinutes
     if (!next.history) next.history = {}
-    next.history[next.todayDate] = next.todayCount
+    next.history[next.todayDate] = {
+      count: next.todayCount,
+      minutes: next.todayMinutes
+    }
   }
   var following = nextPhase(next.phase, next.cycleCount, config)
   return startPhase(next, following, nowMs, config)
@@ -204,15 +238,34 @@ function parseState(text) {
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return idleState()
   var state = idleState()
   if (PHASES.indexOf(parsed.phase) !== -1) state.phase = parsed.phase
-  var numbers = ["endsAtMs", "pausedRemainingMs", "cycleCount", "todayCount"]
+  var numbers = ["endsAtMs", "pausedRemainingMs", "cycleCount", "todayCount", "todayMinutes"]
   for (var i = 0; i < numbers.length; i++) {
     var value = Number(parsed[numbers[i]])
     if (isFinite(value) && value >= 0) state[numbers[i]] = value
   }
+  if (state.todayMinutes === undefined || state.todayMinutes === 0) {
+    if (state.todayCount > 0) {
+      state.todayMinutes = state.todayCount * (Number(parsed.workMinutes) || DEFAULTS.workMinutes)
+    }
+  }
   if (typeof parsed.todayDate === "string") state.todayDate = parsed.todayDate
   state.dndWasOn = parsed.dndWasOn === true
   if (parsed.history && typeof parsed.history === "object" && !Array.isArray(parsed.history)) {
-    state.history = parsed.history
+    var hist = {}
+    var keys = Object.keys(parsed.history)
+    for (var j = 0; j < keys.length; j++) {
+      var k = keys[j]
+      var val = parsed.history[k]
+      if (typeof val === "number") {
+        hist[k] = { count: val, minutes: val * (Number(parsed.workMinutes) || DEFAULTS.workMinutes) }
+      } else if (val && typeof val === "object") {
+        hist[k] = {
+          count: Number(val.count) || 0,
+          minutes: Number(val.minutes) || 0
+        }
+      }
+    }
+    state.history = hist
   }
   if (isFinite(Number(parsed.workMinutes)) && Number(parsed.workMinutes) >= 1) {
     state.workMinutes = Math.floor(Number(parsed.workMinutes))
@@ -236,6 +289,7 @@ function serializeState(state) {
     pausedRemainingMs: state.pausedRemainingMs,
     cycleCount: state.cycleCount,
     todayCount: state.todayCount,
+    todayMinutes: state.todayMinutes || 0,
     todayDate: state.todayDate,
     dndWasOn: state.dndWasOn === true,
     history: state.history || {}
@@ -259,6 +313,16 @@ function formatRemaining(ms) {
   var minutes = Math.floor(total / 60)
   var seconds = total % 60
   return minutes + ":" + (seconds < 10 ? "0" + seconds : String(seconds))
+}
+
+function formatFocusedTime(totalMinutes) {
+  var m = Math.max(0, Math.floor(Number(totalMinutes) || 0))
+  if (m === 0) return "0m"
+  var hours = Math.floor(m / 60)
+  var mins = m % 60
+  if (hours === 0) return mins + "m"
+  if (mins === 0) return hours + "h"
+  return hours + "h " + mins + "m"
 }
 
 function glyphFor(phase) {
@@ -294,6 +358,7 @@ if (typeof module !== "undefined") {
     serializeState: serializeState,
     statePath: statePath,
     formatRemaining: formatRemaining,
+    formatFocusedTime: formatFocusedTime,
     glyphFor: glyphFor,
     labelFor: labelFor,
     setTodayCount: setTodayCount,

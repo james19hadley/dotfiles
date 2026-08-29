@@ -36,8 +36,16 @@ BarWidget {
     var keys = Object.keys(h).sort().reverse()
     for (var i = 0; i < keys.length; i++) {
       var k = keys[i]
-      if (k !== root.session.todayDate && h[k] > 0) {
-        entries.push({ date: k, count: h[k] })
+      var item = h[k]
+      var count = typeof item === "number" ? item : (item ? (item.count || 0) : 0)
+      var mins = typeof item === "number" ? (item * config.workMinutes) : (item ? (item.minutes || 0) : 0)
+      if (k !== root.session.todayDate && count > 0) {
+        entries.push({
+          date: k,
+          count: count,
+          minutes: mins,
+          formatted: PomodoroModel.formatFocusedTime(mins)
+        })
         if (entries.length >= 5) break
       }
     }
@@ -82,12 +90,12 @@ BarWidget {
   }
 
   function adjustCount(delta) {
-    var next = PomodoroModel.adjustTodayCount(session, delta, Date.now())
+    var next = PomodoroModel.adjustTodayCount(session, delta, config.workMinutes, Date.now())
     persist(next)
   }
 
   function setCount(count) {
-    var next = PomodoroModel.setTodayCount(session, count, Date.now())
+    var next = PomodoroModel.setTodayCount(session, count, undefined, Date.now())
     persist(next)
   }
 
@@ -278,10 +286,10 @@ BarWidget {
       ? PomodoroModel.glyphFor("idle")
       : PomodoroModel.glyphFor(root.session.phase) + " " + PomodoroModel.formatRemaining(root.remaining)
     tooltipText: (root.session.phase === "idle"
-      ? "Pomodoro (" + root.session.todayCount + " done today)"
+      ? "Pomodoro (" + root.session.todayCount + " done · " + PomodoroModel.formatFocusedTime(root.session.todayMinutes || 0) + ")"
       : PomodoroModel.labelFor(root.session.phase)
         + (PomodoroModel.isPaused(root.session) ? " (paused)" : "")
-        + " — " + root.session.todayCount + " done today")
+        + " — " + root.session.todayCount + " done (" + PomodoroModel.formatFocusedTime(root.session.todayMinutes || 0) + ") today")
         + " · middle-click opens controls"
     onPressed: function (mouseButton) {
       if (mouseButton === Qt.RightButton) root.skipPhase()
@@ -396,13 +404,24 @@ BarWidget {
           Layout.fillWidth: true
           spacing: Style.space(8)
 
-          Text {
-            text: "Completed Today"
-            color: root.fg
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.body
-            font.bold: true
+          ColumnLayout {
             Layout.fillWidth: true
+            spacing: Style.space(2)
+
+            Text {
+              text: "Completed Today"
+              color: root.fg
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+              font.bold: true
+            }
+
+            Text {
+              text: "Focused: " + PomodoroModel.formatFocusedTime(root.session.todayMinutes || 0)
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+            }
           }
 
           Text {
@@ -557,7 +576,7 @@ BarWidget {
             }
 
             Text {
-              text: modelData.count + " done"
+              text: modelData.formatted + " · " + modelData.count + " done"
               color: root.fg
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
