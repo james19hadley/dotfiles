@@ -24,6 +24,7 @@ BarWidget {
     Quickshell.env("XDG_STATE_HOME"), Quickshell.env("HOME"))
 
   property var session: PomodoroModel.idleState()
+  property var undoState: null
   property double nowMs: Date.now()
 
   readonly property color fg: root.bar ? root.bar.foreground : Color.foreground
@@ -89,23 +90,44 @@ BarWidget {
     stateWriter.setText(PomodoroModel.serializeState(next))
   }
 
+  function recordUndo() {
+    undoState = PomodoroModel.cloneState(session)
+  }
+
+  function undo() {
+    if (undoState !== null) {
+      var toRestore = undoState
+      undoState = null
+      if (toRestore.phase !== "idle" && toRestore.pausedRemainingMs === 0 && toRestore.endsAtMs > 0) {
+        var rem = Math.max(1000, toRestore.endsAtMs - nowMs)
+        toRestore.endsAtMs = Date.now() + rem
+      }
+      applyDnd(toRestore)
+      persist(toRestore)
+    }
+  }
+
   function adjustCount(delta) {
+    recordUndo()
     var next = PomodoroModel.adjustTodayCount(session, delta, config.workMinutes, Date.now())
     persist(next)
   }
 
   function setCount(count) {
+    recordUndo()
     var next = PomodoroModel.setTodayCount(session, count, undefined, Date.now())
     persist(next)
   }
 
   function setWorkDuration(minutes) {
+    recordUndo()
     var next = PomodoroModel.cloneState(session)
     next.workMinutes = minutes
     persist(next)
   }
 
   function setBreakDuration(minutes) {
+    recordUndo()
     var next = PomodoroModel.cloneState(session)
     next.breakMinutes = minutes
     next.longBreakMinutes = minutes === 0 ? 0 : Math.max(15, minutes * 3)
@@ -153,6 +175,7 @@ BarWidget {
   }
 
   function startOrToggle() {
+    recordUndo()
     var now = Date.now()
     if (session.phase === "idle") {
       var started = PomodoroModel.startPhase(session, "work", now, config)
@@ -168,6 +191,7 @@ BarWidget {
 
   function skipPhase() {
     if (session.phase === "idle") return
+    recordUndo()
     var beforeTodayCount = session.todayCount
     var next = PomodoroModel.completePhase(session, Date.now(), config)
     applyDnd(next)
@@ -176,8 +200,10 @@ BarWidget {
   }
 
   function reset() {
+    recordUndo()
     var idle = PomodoroModel.idleState()
     idle.todayCount = session.todayCount
+    idle.todayMinutes = session.todayMinutes || 0
     idle.todayDate = session.todayDate
     idle.history = session.history || {}
     idle.workMinutes = session.workMinutes
@@ -226,7 +252,7 @@ BarWidget {
     command: ["notify-send", "-a", "Pomodoro", "Pomodoro", ""]
   }
 
-  // Scriptable surface: omarchy-shell community.pomodoro toggle|skip|reset|status
+  // Scriptable surface: omarchy-shell community.pomodoro toggle|skip|reset|undo|status
   IpcHandler {
     target: "community.pomodoro"
 
@@ -243,6 +269,11 @@ BarWidget {
     function reset(): string {
       root.reset()
       return "idle"
+    }
+
+    function undo(): string {
+      root.undo()
+      return root.session.phase
     }
 
     function open(): bool {
@@ -272,6 +303,7 @@ BarWidget {
         remainingMs: Math.round(root.remaining),
         cycleCount: root.session.cycleCount,
         todayCount: root.session.todayCount,
+        todayMinutes: root.session.todayMinutes || 0,
         history: root.session.history || {}
       })
     }
@@ -285,12 +317,17 @@ BarWidget {
     text: root.session.phase === "idle"
       ? PomodoroModel.glyphFor("idle")
       : PomodoroModel.glyphFor(root.session.phase) + " " + PomodoroModel.formatRemaining(root.remaining)
-    tooltipText: (root.session.phase === "idle"
-      ? "Pomodoro (" + root.session.todayCount + " done · " + PomodoroModel.formatFocusedTime(root.session.todayMinutes || 0) + ")"
-      : PomodoroModel.labelFor(root.session.phase)
-        + (PomodoroModel.isPaused(root.session) ? " (paused)" : "")
-        + " — " + root.session.todayCount + " done (" + PomodoroModel.formatFocusedTime(root.session.todayMinutes || 0) + ") today")
-        + " · middle-click opens controls"
+    tooltipText: {
+      var count = Number(root.session.todayCount) || 0
+      var mins = Number(root.session.todayMinutes) || (count * root.config.workMinutes) || 0
+      var timeStr = PomodoroModel.formatFocusedTime(mins)
+      if (root.session.phase === "idle") {
+        return "Pomodoro (" + count + " done · " + timeStr + " focused) · middle-click opens controls"
+      }
+      var lbl = PomodoroModel.labelFor(root.session.phase)
+      var pausedStr = PomodoroModel.isPaused(root.session) ? " (paused)" : ""
+      return lbl + pausedStr + " — " + count + " done (" + timeStr + " focused) today · middle-click opens controls"
+    }
     onPressed: function (mouseButton) {
       if (mouseButton === Qt.RightButton) root.skipPhase()
       else if (mouseButton === Qt.MiddleButton) popup.open = !popup.open
@@ -376,14 +413,25 @@ BarWidget {
         Button {
           visible: root.session.phase !== "idle"
           text: "Skip"
+          tooltipText: "Skip to next phase"
           fontFamily: root.fontFamily
           fontSize: Style.font.caption
           onClicked: root.skipPhase()
         }
 
         Button {
+          visible: root.undoState !== null
+          text: "Undo"
+          tooltipText: "Undo last action"
+          fontFamily: root.fontFamily
+          fontSize: Style.font.caption
+          onClicked: root.undo()
+        }
+
+        Button {
           visible: root.session.phase !== "idle"
           text: "Reset"
+          tooltipText: "Reset session to idle"
           fontFamily: root.fontFamily
           fontSize: Style.font.caption
           onClicked: root.reset()
