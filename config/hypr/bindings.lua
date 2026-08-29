@@ -11,9 +11,6 @@ o.bind("SUPER + G", "Signal", "omarchy-launch-or-focus signal 'uwsm app -- signa
 o.bind("SUPER + O", "Obsidian", "omarchy-launch-or-focus obsidian 'uwsm-app -- obsidian'")
 o.bind("SUPER + slash", "Passwords", "uwsm-app -- 1password")
 
--- Display switcher (Super + P)
-hl.unbind("SUPER + P")
-o.bind("SUPER + P", "Display switcher", "/home/ging/.local/bin/omarchy-menu-display")
 
 -- Custom Webapps & assistants
 o.bind("SUPER + A", "FICSIT ADA Assistant", "/home/ging/.local/bin/ada look")
