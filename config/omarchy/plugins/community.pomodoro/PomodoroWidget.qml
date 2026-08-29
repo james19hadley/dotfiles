@@ -489,26 +489,14 @@ BarWidget {
           Layout.fillWidth: true
           spacing: Style.space(8)
 
-          ColumnLayout {
+          Text {
+            text: "Completed Today"
+            color: root.fg
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+            font.bold: true
             Layout.fillWidth: true
-            spacing: Style.space(2)
-
-            Text {
-              text: "Completed Today"
-              color: root.fg
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.body
-              font.bold: true
-            }
-
-            Text {
-              text: root.config.targetMode === "minutes"
-                ? ("Focused: " + PomodoroModel.formatFocusedTime(root.session.todayMinutes || 0) + " / " + PomodoroModel.formatFocusedTime(root.config.targetMinutes))
-                : ("Focused: " + PomodoroModel.formatFocusedTime(root.session.todayMinutes || 0) + " · " + root.session.todayCount + " / " + root.config.targetCount + " done")
-              color: root.dim
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-            }
+            Layout.alignment: Qt.AlignVCenter
           }
 
           Text {
@@ -517,7 +505,17 @@ BarWidget {
             font.family: root.fontFamily
             font.pixelSize: Style.font.title
             font.bold: true
+            Layout.alignment: Qt.AlignVCenter
           }
+        }
+
+        Text {
+          text: root.config.targetMode === "minutes"
+            ? ("Focused: " + PomodoroModel.formatFocusedTime(root.session.todayMinutes || 0) + " / " + PomodoroModel.formatFocusedTime(root.config.targetMinutes))
+            : ("Focused: " + PomodoroModel.formatFocusedTime(root.session.todayMinutes || 0) + " · " + root.session.todayCount + " / " + root.config.targetCount + " done")
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
         }
 
         RowLayout {
@@ -601,7 +599,7 @@ BarWidget {
 
         RowLayout {
           Layout.fillWidth: true
-          spacing: Style.space(8)
+          spacing: Style.space(6)
 
           Text {
             text: "Daily Goal"
@@ -612,13 +610,55 @@ BarWidget {
             Layout.fillWidth: true
           }
 
+          Text {
+            text: root.config.targetMode === "minutes"
+              ? PomodoroModel.formatFocusedTime(root.config.targetMinutes)
+              : (root.config.targetCount + " pomodoros")
+            color: Color.accent
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+          }
+
           Button {
-            text: root.config.targetMode === "minutes" ? "Time" : "Pomodoros"
-            tooltipText: "Switch between Pomodoros and Time goal"
+            text: root.config.targetMode === "minutes" ? "-15m" : "-1"
+            tooltipText: "Decrease goal"
+            fontFamily: root.fontFamily
+            fontSize: Style.font.caption
+            horizontalPadding: Style.space(4)
+            verticalPadding: Style.space(1)
+            onClicked: {
+              if (root.config.targetMode === "minutes") {
+                root.setTargetValue(Math.max(15, root.config.targetMinutes - 15))
+              } else {
+                root.setTargetValue(Math.max(1, root.config.targetCount - 1))
+              }
+            }
+          }
+
+          Button {
+            text: root.config.targetMode === "minutes" ? "+15m" : "+1"
+            tooltipText: "Increase goal"
+            fontFamily: root.fontFamily
+            fontSize: Style.font.caption
+            horizontalPadding: Style.space(4)
+            verticalPadding: Style.space(1)
+            onClicked: {
+              if (root.config.targetMode === "minutes") {
+                root.setTargetValue(Math.min(720, root.config.targetMinutes + 15))
+              } else {
+                root.setTargetValue(Math.min(50, root.config.targetCount + 1))
+              }
+            }
+          }
+
+          Button {
+            text: root.config.targetMode === "minutes" ? "Time" : "Count"
+            tooltipText: "Switch between Count and Time goal"
             fontFamily: root.fontFamily
             fontSize: Style.font.caption
             horizontalPadding: Style.space(6)
-            verticalPadding: Style.space(2)
+            verticalPadding: Style.space(1)
             onClicked: root.toggleTargetMode()
           }
         }
@@ -669,12 +709,46 @@ BarWidget {
         Layout.fillWidth: true
         spacing: Style.space(6)
 
-        Text {
-          text: "Duration"
-          color: root.fg
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          font.bold: true
+        RowLayout {
+          Layout.fillWidth: true
+          spacing: Style.space(6)
+
+          Text {
+            text: "Duration"
+            color: root.fg
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            Layout.fillWidth: true
+          }
+
+          Text {
+            text: root.config.workMinutes + " min"
+            color: Color.accent
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+          }
+
+          Button {
+            text: "-1m"
+            tooltipText: "Decrease duration by 1 min"
+            fontFamily: root.fontFamily
+            fontSize: Style.font.caption
+            horizontalPadding: Style.space(4)
+            verticalPadding: Style.space(1)
+            onClicked: root.setWorkDuration(Math.max(1, root.config.workMinutes - 1))
+          }
+
+          Button {
+            text: "+1m"
+            tooltipText: "Increase duration by 1 min"
+            fontFamily: root.fontFamily
+            fontSize: Style.font.caption
+            horizontalPadding: Style.space(4)
+            verticalPadding: Style.space(1)
+            onClicked: root.setWorkDuration(Math.min(240, root.config.workMinutes + 1))
+          }
         }
 
         RowLayout {
@@ -701,12 +775,46 @@ BarWidget {
         Layout.fillWidth: true
         spacing: Style.space(6)
 
-        Text {
-          text: "Rest Breaks"
-          color: root.fg
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          font.bold: true
+        RowLayout {
+          Layout.fillWidth: true
+          spacing: Style.space(6)
+
+          Text {
+            text: "Rest Breaks"
+            color: root.fg
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            Layout.fillWidth: true
+          }
+
+          Text {
+            text: root.config.breakMinutes === 0 ? "Off" : (root.config.breakMinutes + " min")
+            color: root.config.breakMinutes > 0 ? Color.accent : root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+          }
+
+          Button {
+            text: "-1m"
+            tooltipText: "Decrease break by 1 min"
+            fontFamily: root.fontFamily
+            fontSize: Style.font.caption
+            horizontalPadding: Style.space(4)
+            verticalPadding: Style.space(1)
+            onClicked: root.setBreakDuration(Math.max(0, root.config.breakMinutes - 1))
+          }
+
+          Button {
+            text: "+1m"
+            tooltipText: "Increase break by 1 min"
+            fontFamily: root.fontFamily
+            fontSize: Style.font.caption
+            horizontalPadding: Style.space(4)
+            verticalPadding: Style.space(1)
+            onClicked: root.setBreakDuration(Math.min(120, root.config.breakMinutes + 1))
+          }
         }
 
         RowLayout {
